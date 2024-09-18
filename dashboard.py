@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Add your company logo
-st.image("UHURULOGO", width=200)  # Adjust the width as needed
+st.image("UHURULOGO.jpg", width=200)  # Adjust the width as needed
 
 st.title("Stock Analysis Dashboard")
 
