@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
 st.title("Stock Dashboard")
 
@@ -14,11 +15,25 @@ ticker = st.text_input("Enter Stock Ticker:", "AAPL")
 # Select time frame
 time_frame = st.selectbox("Select Time Frame:", ["1m", "5m", "1d", "5d", "1w", "1mo"])
 
+# Default data loading based on selected time frame
+if time_frame == "1d":
+    # Load last 6 months of data for daily interval
+    default_start_date = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+elif time_frame == "1w":
+    # Load last year of data for weekly interval
+    default_start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+else:
+    # For other intervals, default start date could be set to None or to the earliest date
+    default_start_date = None
+
 if st.button("Get Stock Data"):
     try:
-        # Fetch stock data from the Flask API
-        response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}')
-        
+        # If default_start_date is set, use it to fetch data
+        if default_start_date:
+            response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}?start_date={default_start_date}')
+        else:
+            response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}')
+
         # Check if the response is successful
         if response.status_code == 200:
             data = response.json()
