@@ -1,7 +1,7 @@
 import streamlit as st
 import requests
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 st.title("Stock Dashboard")
 
@@ -33,41 +33,35 @@ if st.button("Get Stock Data"):
             # Set the 'Date' as the index for plotting
             df.set_index('Date', inplace=True)
 
-            # Display stock data
-            st.subheader(f"{ticker} Stock Data")
-            st.write(df)
+            # Create the Plotly figure
+            fig = go.Figure()
 
-            # Create an interactive chart
-            fig, ax1 = plt.subplots(figsize=(10, 6))
+            # Price action
+            fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Close', line=dict(color='blue')))
+            fig.add_trace(go.Scatter(x=df.index, y=df['MA21'], mode='lines', name='MA21', line=dict(color='orange', dash='dash')))
+            fig.add_trace(go.Scatter(x=df.index, y=df['MA50'], mode='lines', name='MA50', line=dict(color='green', dash='dash')))
+            fig.add_trace(go.Scatter(x=df.index, y=df['MA200'], mode='lines', name='MA200', line=dict(color='red', dash='dash')))
 
-            # Plot price action
-            ax1.plot(df.index, df['Close'], label='Close', color='blue')
-            ax1.plot(df.index, df['MA21'], label='MA21', color='orange', linestyle='--')
-            ax1.plot(df.index, df['MA50'], label='MA50', color='green', linestyle='--')
-            ax1.plot(df.index, df['MA200'], label='MA200', color='red', linestyle='--')
+            # RSI as a separate axis
+            fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], mode='lines', name='RSI', line=dict(color='purple'), yaxis='y2'))
 
-            # Create a second y-axis for RSI
-            ax2 = ax1.twinx()
-            ax2.plot(df.index, df['RSI'], label='RSI', color='purple', linestyle=':')
+            # Volume as a bar chart
+            fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name='Volume', marker_color='lightgray', yaxis='y3'))
 
-            # Create a third y-axis for Volume
-            ax3 = ax1.twinx()
-            ax3.spines['right'].set_position(('outward', 60))  # Offset the third axis
-            ax3.bar(df.index, df['Volume'], label='Volume', color='lightgray', alpha=0.5)
-
-            # Add legends
-            ax1.legend(loc='upper left')
-            ax2.legend(loc='upper right')
-            ax3.legend(loc='center right')
-
-            # Set labels
-            ax1.set_xlabel('Date')
-            ax1.set_ylabel('Price')
-            ax2.set_ylabel('RSI')
-            ax3.set_ylabel('Volume')
+            # Update layout for multiple y-axes
+            fig.update_layout(
+                title=f"{ticker} Stock Data",
+                xaxis_title="Date",
+                yaxis_title="Price",
+                yaxis2=dict(title='RSI', overlaying='y', side='right', showgrid=False),
+                yaxis3=dict(title='Volume', overlaying='y', side='right', position=0.95, showgrid=False),
+                legend=dict(x=0.01, y=0.99),
+                template='plotly_white',
+                height=600
+            )
 
             # Show the plot in Streamlit
-            st.pyplot(fig)
+            st.plotly_chart(fig)
 
         elif response.status_code == 404:
             st.error("Error fetching data: " + response.json()['error'])
