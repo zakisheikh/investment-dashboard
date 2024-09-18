@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
 
 st.title("Stock Dashboard")
 
@@ -18,20 +17,7 @@ time_frame = st.selectbox("Select Time Frame:", ["1m", "5m", "1d", "5d", "1w", "
 if st.button("Get Stock Data"):
     try:
         # Determine the start date based on the selected time frame
-        if time_frame in ['1m', '5m']:  # Last 90 minutes for minute selections
-            start_date = (pd.Timestamp.now() - pd.DateOffset(minutes=90)).date()
-        elif time_frame in ['1d', '5d']:  # Last 6 months for daily selections
-            start_date = (pd.Timestamp.today() - pd.DateOffset(months=6)).date()
-        elif time_frame == '1w':  # Last 1 year for weekly selection
-            start_date = (pd.Timestamp.today() - pd.DateOffset(years=1)).date()
-        elif time_frame == '1mo':  # Last 2 years for monthly selection
-            start_date = (pd.Timestamp.today() - pd.DateOffset(years=2)).date()
-        else:
-            start_date = None  # For other time frames
-
         url = f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}'
-        if start_date:
-            url += f'?start_date={start_date}'
 
         response = requests.get(url)
 
@@ -45,14 +31,9 @@ if st.button("Get Stock Data"):
             df['High'] = df['High'].round(2)
             df['Low'] = df['Low'].round(2)
 
-            # Update this line to use the correct format
-            df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%y', utc=True)
+            # Convert Date column and set as index
+            df['Date'] = pd.to_datetime(df['Date'], utc=True)
             df.set_index('Date', inplace=True)
-
-            # Calculate moving averages
-            df['MA21'] = df['Close'].rolling(window=21).mean()
-            df['MA50'] = df['Close'].rolling(window=50).mean()
-            df['MA200'] = df['Close'].rolling(window=200).mean()
 
             # Create the Plotly figure
             fig = go.Figure()
@@ -66,40 +47,17 @@ if st.button("Get Stock Data"):
                 close=df['Close'],
                 name='Candlestick',
                 increasing_line_color='green',
-                decreasing_line_color='red',
-                hovertext=(
-                    "Date: " + df.index.astype(str) + "<br>" +
-                    "Open: " + df['Open'].astype(str) + "<br>" +
-                    "High: " + df['High'].astype(str) + "<br>" +
-                    "Low: " + df['Low'].astype(str) + "<br>" +
-                    "Close: " + df['Close'].astype(str) + "<br>" +
-                    "Volume: " + df['Volume'].astype(str)
-                ),
-                hoverinfo='text'  # Show only custom text
+                decreasing_line_color='red'
             ))
 
-            # Determine color for volume bars
-            volume_color = ['green' if close >= open else 'red' for close, open in zip(df['Close'], df['Open'])]
-
-            # Create a separate figure for volume
-            volume_fig = go.Figure()
-
-            # Volume bar chart with color based on price movement
-            volume_fig.add_trace(go.Bar(
-                x=df.index,
-                y=df['Volume'],
-                name='Volume',
-                marker_color=volume_color
-            ))
-
-            # Add moving averages for the price if they exist
-            for ma in ['MA21', 'MA50', 'MA200']:
-                if ma in df.columns:
+            # Add moving averages if they exist
+            for col in df.columns:
+                if col.startswith('MA'):
                     fig.add_trace(go.Scatter(
                         x=df.index,
-                        y=df[ma],
+                        y=df[col],
                         mode='lines',
-                        name=ma,
+                        name=col,
                         line=dict(dash='dash')
                     ))
 
@@ -118,6 +76,20 @@ if st.button("Get Stock Data"):
 
             # Show the candlestick plot in Streamlit
             st.plotly_chart(fig)
+
+            # Determine color for volume bars
+            volume_color = ['green' if close >= open else 'red' for close, open in zip(df['Close'], df['Open'])]
+
+            # Create a separate figure for volume
+            volume_fig = go.Figure()
+
+            # Volume bar chart with color based on price movement
+            volume_fig.add_trace(go.Bar(
+                x=df.index,
+                y=df['Volume'],
+                name='Volume',
+                marker_color=volume_color
+            ))
 
             # Update layout for the volume chart without title
             volume_fig.update_layout(
