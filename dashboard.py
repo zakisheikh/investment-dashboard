@@ -2,6 +2,7 @@ import streamlit as st
 import requests
 import pandas as pd
 import plotly.graph_objects as go
+from datetime import datetime, timedelta
 
 st.title("Stock Dashboard")
 
@@ -14,11 +15,25 @@ ticker = st.text_input("Enter Stock Ticker:", "AAPL")
 # Select time frame
 time_frame = st.selectbox("Select Time Frame:", ["1m", "5m", "1d", "5d", "1w", "1mo"])
 
+# Default data loading based on selected time frame
+if time_frame == "1d":
+    # Load last 6 months of data for daily interval
+    default_start_date = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
+elif time_frame == "1w":
+    # Load last year of data for weekly interval
+    default_start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+else:
+    # For other intervals, default start date could be set to None or to the earliest date
+    default_start_date = None
+
 if st.button("Get Stock Data"):
     try:
-        # Fetch stock data from the Flask API
-        response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}')
-        
+        # If default_start_date is set, use it to fetch data
+        if default_start_date:
+            response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}?start_date={default_start_date}')
+        else:
+            response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}')
+
         # Check if the response is successful
         if response.status_code == 200:
             data = response.json()
@@ -48,7 +63,17 @@ if st.button("Get Stock Data"):
                 close=df['Close'],
                 name='Candlestick',
                 increasing_line_color='green',
-                decreasing_line_color='red'
+                decreasing_line_color='red',
+                hovertemplate=(
+                    "Date: %{x}<br>" +
+                    "Open: %{y0}<br>" +
+                    "High: %{y2}<br>" +
+                    "Low: %{y1}<br>" +
+                    "Close: %{y3}<br>" +
+                    "Volume: %{customdata}<br>" +
+                    "<extra></extra>"
+                ),
+                customdata=df['Volume']  # Include volume for hover
             ))
 
             # Determine color for volume bars
@@ -73,9 +98,12 @@ if st.button("Get Stock Data"):
             if 'MA200' in df.columns:
                 fig.add_trace(go.Scatter(x=df.index, y=df['MA200'], mode='lines', name='MA200', line=dict(color='red', dash='dash')))
 
+            # Get the last price for display
+            last_price = df['Close'].iloc[-1]
+
             # Update layout for the main price chart
             fig.update_layout(
-                title=f"{ticker} Stock Price",
+                title=f"{ticker} Stock Price - Last Price: ${last_price:.2f}",
                 xaxis_title="Date",
                 yaxis_title="Price",
                 template='plotly_white',
