@@ -1,36 +1,39 @@
-import streamlit as st
-import requests
 import pandas as pd
-import plotly.graph_objects as go
+import requests
+import streamlit as st
+import plotly.graph_objs as go
 from datetime import datetime, timedelta
 
-st.title("Stock Dashboard")
+# Function to calculate default start date based on time frame
+def calculate_default_start_date(time_frame):
+    today = datetime.utcnow()
+    if time_frame == 'd':
+        return today - timedelta(days=180)  # 6 months for daily
+    elif time_frame == 'w':
+        return today - timedelta(days=365)  # 1 year for weekly
+    else:
+        return None  # No default for other time frames
 
-# Add your company logo
-st.image("UHURULOGO.jpg", width=200)  # Adjust the width as needed
+# Main Streamlit application
+st.title("Stock Data Dashboard")
 
-# Input for stock ticker
-ticker = st.text_input("Enter Stock Ticker:", "AAPL")
+# User input for ticker symbol and time frame
+ticker = st.text_input("Enter stock ticker (e.g., AAPL):", "AAPL")
+time_frame = st.selectbox("Select time frame:", ["d", "w", "1w", "1m"])
 
-# Select time frame
-time_frame = st.selectbox("Select Time Frame:", ["1m", "5m", "1d", "5d", "1w", "1mo"])
-
-# Default data loading based on selected time frame
-if time_frame == "1d":
-    # Load last 6 months of data for daily interval
-    default_start_date = (datetime.now() - timedelta(days=180)).strftime('%Y-%m-%d')
-elif time_frame == "1w":
-    # Load last year of data for weekly interval
-    default_start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-else:
-    default_start_date = None  # Default to None for other intervals
+# Set default start date based on selected time frame
+default_start_date = calculate_default_start_date(time_frame)
 
 if st.button("Get Stock Data"):
     try:
+        # Format the default start date for the API request
+        start_date_str = default_start_date.strftime('%Y-%m-%d') if default_start_date else None
         url = f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}'
-        if default_start_date:
-            url += f'?start_date={default_start_date}'
         
+        # Only include the start date if it's available
+        if start_date_str:
+            url += f'?start_date={start_date_str}'
+
         response = requests.get(url)
 
         if response.status_code == 200:
