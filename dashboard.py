@@ -11,10 +11,13 @@ st.image("UHURULOGO.jpg", width=200)  # Adjust the width as needed
 # Input for stock ticker
 ticker = st.text_input("Enter Stock Ticker:", "AAPL")
 
+# Select time frame
+time_frame = st.selectbox("Select Time Frame:", ["1m", "5m", "1d", "5d", "1w", "1mo"])
+
 if st.button("Get Stock Data"):
     try:
         # Fetch stock data from the Flask API
-        response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}')
+        response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}')
         
         # Check if the response is successful
         if response.status_code == 200:
@@ -48,15 +51,18 @@ if st.button("Get Stock Data"):
                 decreasing_line_color='red'
             ))
 
+            # Determine color for volume bars
+            volume_color = ['green' if close >= open else 'red' for close, open in zip(df['Close'], df['Open'])]
+
             # Create a separate figure for volume
             volume_fig = go.Figure()
 
-            # Volume bar chart
+            # Volume bar chart with color based on price movement
             volume_fig.add_trace(go.Bar(
                 x=df.index,
                 y=df['Volume'],
                 name='Volume',
-                marker_color='lightgray'
+                marker_color=volume_color
             ))
 
             # Add moving averages for the price
@@ -80,17 +86,24 @@ if st.button("Get Stock Data"):
             # Show the candlestick plot in Streamlit
             st.plotly_chart(fig)
 
-            # Update layout for the volume chart
+            # Update layout for the volume chart without title
             volume_fig.update_layout(
-                title=f"{ticker} Volume",
                 xaxis_title="Date",
                 yaxis_title="Volume",
                 template='plotly_white',
-                height=300
+                height=300,
+                showlegend=False  # Hide legend for volume
             )
 
-            # Show the volume plot in Streamlit
+            # Show the volume plot in Streamlit right below the candlestick
             st.plotly_chart(volume_fig)
+
+            # Key information display
+            st.markdown("""
+            **Key:**
+            - **Green Volume Bars**: Closing price was higher than the opening price.
+            - **Red Volume Bars**: Closing price was lower than the opening price.
+            """)
 
         elif response.status_code == 404:
             st.error("Error fetching data: " + response.json()['error'])
