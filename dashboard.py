@@ -60,16 +60,15 @@ if st.button("Get Stock Data"):
                 name='Candlestick',
                 increasing_line_color='green',
                 decreasing_line_color='red',
-                hovertemplate=(
-                    "Date: %{x}<br>" +
-                    "Open: %{y0}<br>" +
-                    "High: %{y2}<br>" +
-                    "Low: %{y1}<br>" +
-                    "Close: %{y3}<br>" +
-                    "Volume: %{customdata}<br>" +
-                    "<extra></extra>"
+                hovertext=(
+                    "Date: " + df.index.astype(str) + "<br>" +
+                    "Open: " + df['Open'].astype(str) + "<br>" +
+                    "High: " + df['High'].astype(str) + "<br>" +
+                    "Low: " + df['Low'].astype(str) + "<br>" +
+                    "Close: " + df['Close'].astype(str) + "<br>" +
+                    "Volume: " + df['Volume'].astype(str)
                 ),
-                customdata=df['Volume'],  # Include volume for hover
+                hoverinfo='text'  # Show only custom text
             ))
 
             # Determine color for volume bars
