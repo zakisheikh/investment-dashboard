@@ -48,7 +48,17 @@ if st.button("Get Stock Data"):
                 close=df['Close'],
                 name='Candlestick',
                 increasing_line_color='green',
-                decreasing_line_color='red'
+                decreasing_line_color='red',
+                hovertemplate=(
+                    "Date: %{x}<br>" +
+                    "Open: %{y0}<br>" +
+                    "High: %{y2}<br>" +
+                    "Low: %{y1}<br>" +
+                    "Close: %{y3}<br>" +
+                    "Volume: %{customdata}<br>" +
+                    "<extra></extra>"
+                ),
+                customdata=df['Volume']  # Include volume for hover
             ))
 
             # Determine color for volume bars
@@ -73,9 +83,12 @@ if st.button("Get Stock Data"):
             if 'MA200' in df.columns:
                 fig.add_trace(go.Scatter(x=df.index, y=df['MA200'], mode='lines', name='MA200', line=dict(color='red', dash='dash')))
 
+            # Get the last price for display
+            last_price = df['Close'].iloc[-1]
+
             # Update layout for the main price chart
             fig.update_layout(
-                title=f"{ticker} Stock Price",
+                title=f"{ticker} Stock Price - Last Price: ${last_price:.2f}",
                 xaxis_title="Date",
                 yaxis_title="Price",
                 template='plotly_white',
