@@ -7,7 +7,7 @@ app = Flask(__name__)
 @app.route('/stock/<ticker>', methods=['GET'])
 def get_stock_data(ticker):
     stock_data = yf.Ticker(ticker)
-    history = stock_data.history(period="1y")  # Get 200 days of historical data
+    history = stock_data.history(period="10y")  # Get 10 years of historical data
 
     # Check if history is empty
     if history.empty:
