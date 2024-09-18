@@ -43,8 +43,8 @@ if st.button("Get Stock Data"):
             df['High'] = df['High'].round(2)
             df['Low'] = df['Low'].round(2)
 
-            # Format the 'Date' column to datetime with a specified format
-            df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d', utc=True)
+            # Update this line to use the correct format
+            df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%y', utc=True)
             df.set_index('Date', inplace=True)
 
             # Create the Plotly figure
