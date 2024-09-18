@@ -3,10 +3,10 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 
+st.title("Stock Dashboard")
+
 # Add your company logo
 st.image("UHURULOGO.jpg", width=200)  # Adjust the width as needed
-
-st.title("Stock Analysis Dashboard")
 
 # Input for stock ticker
 ticker = st.text_input("Enter Stock Ticker:", "AAPL")
@@ -21,20 +21,17 @@ if st.button("Get Stock Data"):
             data = response.json()
             df = pd.DataFrame(data)
 
-            # Convert the 'Date' column to datetime format
-            df['Date'] = pd.to_datetime(df['Date'])
-
             # Format price data to two decimal places
             df['Close'] = df['Close'].round(2)
             df['Open'] = df['Open'].round(2)
             df['High'] = df['High'].round(2)
             df['Low'] = df['Low'].round(2)
 
-            # Format the 'Date' column to MM/DD/YY for display
-            df['Display_Date'] = df['Date'].dt.strftime('%m/%d/%y')
+            # Format the 'Date' column to MM/DD/YY with UTC handling
+            df['Date'] = pd.to_datetime(df['Date'], utc=True).dt.strftime('%m/%d/%y')
 
             # Set the 'Date' as the index for plotting
-            df.set_index('Display_Date', inplace=True)
+            df.set_index('Date', inplace=True)
 
             # Display stock data
             st.subheader(f"{ticker} Stock Data")
