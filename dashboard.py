@@ -49,6 +49,11 @@ if st.button("Get Stock Data"):
             df['Date'] = pd.to_datetime(df['Date'], format='%m/%d/%y', utc=True)
             df.set_index('Date', inplace=True)
 
+            # Calculate moving averages
+            df['MA21'] = df['Close'].rolling(window=21).mean()
+            df['MA50'] = df['Close'].rolling(window=50).mean()
+            df['MA200'] = df['Close'].rolling(window=200).mean()
+
             # Create the Plotly figure
             fig = go.Figure()
 
