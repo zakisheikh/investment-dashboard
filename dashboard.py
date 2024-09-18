@@ -36,32 +36,61 @@ if st.button("Get Stock Data"):
             # Create the Plotly figure
             fig = go.Figure()
 
-            # Price action
-            fig.add_trace(go.Scatter(x=df.index, y=df['Close'], mode='lines', name='Close', line=dict(color='blue')))
-            fig.add_trace(go.Scatter(x=df.index, y=df['MA21'], mode='lines', name='MA21', line=dict(color='orange', dash='dash')))
-            fig.add_trace(go.Scatter(x=df.index, y=df['MA50'], mode='lines', name='MA50', line=dict(color='green', dash='dash')))
-            fig.add_trace(go.Scatter(x=df.index, y=df['MA200'], mode='lines', name='MA200', line=dict(color='red', dash='dash')))
+            # Candlestick chart for price action
+            fig.add_trace(go.Candlestick(
+                x=df.index,
+                open=df['Open'],
+                high=df['High'],
+                low=df['Low'],
+                close=df['Close'],
+                name='Candlestick',
+                increasing_line_color='green',
+                decreasing_line_color='red'
+            ))
 
-            # RSI as a separate axis
-            fig.add_trace(go.Scatter(x=df.index, y=df['RSI'], mode='lines', name='RSI', line=dict(color='purple'), yaxis='y2'))
+            # Create a separate figure for volume
+            volume_fig = go.Figure()
 
-            # Volume as a bar chart
-            fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name='Volume', marker_color='lightgray', yaxis='y3'))
+            # Volume bar chart
+            volume_fig.add_trace(go.Bar(
+                x=df.index,
+                y=df['Volume'],
+                name='Volume',
+                marker_color='lightgray'
+            ))
 
-            # Update layout for multiple y-axes
+            # Add moving averages for the price
+            if 'MA21' in df.columns:
+                fig.add_trace(go.Scatter(x=df.index, y=df['MA21'], mode='lines', name='MA21', line=dict(color='orange', dash='dash')))
+            if 'MA50' in df.columns:
+                fig.add_trace(go.Scatter(x=df.index, y=df['MA50'], mode='lines', name='MA50', line=dict(color='blue', dash='dash')))
+            if 'MA200' in df.columns:
+                fig.add_trace(go.Scatter(x=df.index, y=df['MA200'], mode='lines', name='MA200', line=dict(color='red', dash='dash')))
+
+            # Update layout for the main price chart
             fig.update_layout(
-                title=f"{ticker} Stock Data",
+                title=f"{ticker} Stock Price",
                 xaxis_title="Date",
                 yaxis_title="Price",
-                yaxis2=dict(title='RSI', overlaying='y', side='right', showgrid=False),
-                yaxis3=dict(title='Volume', overlaying='y', side='right', position=0.95, showgrid=False),
-                legend=dict(x=0.01, y=0.99),
                 template='plotly_white',
-                height=600
+                height=600,
+                xaxis_rangeslider_visible=False
             )
 
-            # Show the plot in Streamlit
+            # Show the candlestick plot in Streamlit
             st.plotly_chart(fig)
+
+            # Update layout for the volume chart
+            volume_fig.update_layout(
+                title=f"{ticker} Volume",
+                xaxis_title="Date",
+                yaxis_title="Volume",
+                template='plotly_white',
+                height=300
+            )
+
+            # Show the volume plot in Streamlit
+            st.plotly_chart(volume_fig)
 
         elif response.status_code == 404:
             st.error("Error fetching data: " + response.json()['error'])
