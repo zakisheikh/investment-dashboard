@@ -4,22 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Market Dashboard</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
     <h1>Market Dashboard</h1>
-    <div>
-        <canvas id="stockChart" width="400" height="200"></canvas>
-    </div>
-    <div id="metrics">
-        <h2>Model Metrics</h2>
-        <ul id="metricList"></ul> <!-- List for displaying model metrics -->
-    </div>
+    <canvas id="stockChart" width="400" height="200"></canvas>
+    <h2>Model Metrics</h2>
+    <div id="modelMetrics"></div>
+
     <script>
         fetch('/api/data')
             .then(response => response.json())
             .then(data => {
-                // Render the chart
                 const labels = data['AAPL']['Dates'];
                 const closePrices = data['AAPL']['Close'];
                 const modelMSE = data['AAPL']['Model MSE'];
@@ -33,32 +29,31 @@
                             label: 'AAPL Close Prices',
                             data: closePrices,
                             borderColor: 'rgba(75, 192, 192, 1)',
-                            borderWidth: 2,
-                            fill: false
+                            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                            fill: true
                         }]
                     },
                     options: {
-                        responsive: true,
                         scales: {
                             x: {
-                                title: {
-                                    display: true,
-                                    text: 'Date'
+                                type: 'time',
+                                time: {
+                                    unit: 'day'
                                 }
                             },
                             y: {
-                                title: {
-                                    display: true,
-                                    text: 'Price'
-                                }
+                                beginAtZero: false
                             }
                         }
                     }
                 });
 
-                // Display model metrics
-                const metricList = document.getElementById('metricList');
-                metricList.innerHTML += `<li>Model Mean Squared Error (MSE): ${modelMSE.toFixed(4)}</li>`;
+                // Display model MSE
+                document.getElementById('modelMetrics').innerHTML = 
+                    `Model Mean Squared Error (MSE): ${modelMSE.toFixed(4)}`;
+            })
+            .catch(error => {
+                console.error('There was a problem with the fetch operation:', error);
             });
     </script>
 </body>
