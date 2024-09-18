@@ -1,40 +1,42 @@
 import yfinance as yf
-from pattern_recognition import detect_cup_handle, detect_flat_base, detect_breakout, calculate_composite_rating
-import plotly.graph_objs as go
-from dash import html, dcc
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
 
-def fetch_stock_data(ticker, start, end):
-    return yf.download(ticker, start=start, end=end)
+def get_market_data(tickers=['AAPL', 'GOOGL', 'MSFT']):
+    data = {}
+    for ticker in tickers:
+        stock = yf.Ticker(ticker)
+        hist = stock.history(period="1y", interval="1d")  # Extended period for ML
 
-def create_dashboard():
-    stock_data = fetch_stock_data('AAPL', '2020-01-01', '2023-01-01')
-    sp500_data = fetch_stock_data('^GSPC', '2020-01-01', '2023-01-01')
+        # Prepare the data for machine learning
+        hist['Return'] = hist['Close'].pct_change()  # Calculate daily returns
+        hist['Lag1'] = hist['Close'].shift(1)  # Lagged closing price
+        hist.dropna(inplace=True)  # Drop rows with NaN values
 
-    # Detect patterns
-    stock_data['CupHandle'] = detect_cup_handle(stock_data)
-    stock_data['FlatBase'] = detect_flat_base(stock_data)
-    stock_data['Breakout'] = detect_breakout(stock_data)
+        # Define features (X) and labels (y)
+        X = hist[['Lag1']]
+        y = hist['Close']
 
-    # Composite rating
-    composite_rating = calculate_composite_rating(stock_data, sp500_data)
-    
-    # Graph to display stock prices and detected patterns
-    fig = go.Figure([go.Scatter(x=stock_data.index, y=stock_data['Close'], name="Stock Price")])
+        # Train/test split
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # Highlight patterns (CupHandle, FlatBase)
-    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], 
-                             mode='markers', marker=dict(color='blue', size=10), 
-                             name='CupHandle', visible=stock_data['CupHandle']))
+        # Train a simple linear regression model
+        model = LinearRegression()
+        model.fit(X_train, y_train)
 
-    fig.add_trace(go.Scatter(x=stock_data.index, y=stock_data['Close'], 
-                             mode='markers', marker=dict(color='green', size=10), 
-                             name='FlatBase', visible=stock_data['FlatBase']))
+        # Predicting the test set
+        predictions = model.predict(X_test)
 
-    # Layout for the Dash application
-    layout = html.Div([
-        html.H1("CANSLIM Stock Pattern Recognition"),
-        dcc.Graph(figure=fig),
-        html.P(f"Composite Rating: {composite_rating:.2f}%")
-    ])
-    
-    return layout
+        # Evaluate the model
+        mse = mean_squared_error(y_test, predictions)
+
+        # Store the model and evaluation results
+        data[ticker] = {
+            'Close': hist['Close'].tolist(),
+            'Dates': hist.index.strftime('%Y-%m-%d').tolist(),
+            'Model MSE': mse,
+        }
+
+    return data
