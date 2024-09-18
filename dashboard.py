@@ -27,14 +27,12 @@ else:
 
 if st.button("Get Stock Data"):
     try:
-        # If default_start_date is set, use it to fetch data
         url = f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}'
         if default_start_date:
             url += f'?start_date={default_start_date}'
         
         response = requests.get(url)
 
-        # Check if the response is successful
         if response.status_code == 200:
             data = response.json()
             df = pd.DataFrame(data)
@@ -45,8 +43,8 @@ if st.button("Get Stock Data"):
             df['High'] = df['High'].round(2)
             df['Low'] = df['Low'].round(2)
 
-            # Format the 'Date' column to datetime
-            df['Date'] = pd.to_datetime(df['Date'], utc=True)
+            # Format the 'Date' column to datetime with a specified format
+            df['Date'] = pd.to_datetime(df['Date'], format='%Y-%m-%d', utc=True)
             df.set_index('Date', inplace=True)
 
             # Create the Plotly figure
@@ -62,8 +60,6 @@ if st.button("Get Stock Data"):
                 name='Candlestick',
                 increasing_line_color='green',
                 decreasing_line_color='red',
-                hovertext=df['Close'],  # Use hovertext instead of hovertemplate
-                customdata=df['Volume'],  # Include volume for hover
                 hovertemplate=(
                     "Date: %{x}<br>" +
                     "Open: %{y0}<br>" +
@@ -73,6 +69,7 @@ if st.button("Get Stock Data"):
                     "Volume: %{customdata}<br>" +
                     "<extra></extra>"
                 ),
+                customdata=df['Volume'],  # Include volume for hover
             ))
 
             # Determine color for volume bars
