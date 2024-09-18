@@ -23,16 +23,16 @@ elif time_frame == "1w":
     # Load last year of data for weekly interval
     default_start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
 else:
-    # For other intervals, default start date could be set to None or to the earliest date
-    default_start_date = None
+    default_start_date = None  # Default to None for other intervals
 
 if st.button("Get Stock Data"):
     try:
         # If default_start_date is set, use it to fetch data
+        url = f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}'
         if default_start_date:
-            response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}?start_date={default_start_date}')
-        else:
-            response = requests.get(f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}')
+            url += f'?start_date={default_start_date}'
+        
+        response = requests.get(url)
 
         # Check if the response is successful
         if response.status_code == 200:
@@ -45,10 +45,8 @@ if st.button("Get Stock Data"):
             df['High'] = df['High'].round(2)
             df['Low'] = df['Low'].round(2)
 
-            # Format the 'Date' column to MM/DD/YY with UTC handling
-            df['Date'] = pd.to_datetime(df['Date'], utc=True).dt.strftime('%m/%d/%y')
-
-            # Set the 'Date' as the index for plotting
+            # Format the 'Date' column to datetime
+            df['Date'] = pd.to_datetime(df['Date'], utc=True)
             df.set_index('Date', inplace=True)
 
             # Create the Plotly figure
@@ -64,6 +62,8 @@ if st.button("Get Stock Data"):
                 name='Candlestick',
                 increasing_line_color='green',
                 decreasing_line_color='red',
+                hovertext=df['Close'],  # Use hovertext instead of hovertemplate
+                customdata=df['Volume'],  # Include volume for hover
                 hovertemplate=(
                     "Date: %{x}<br>" +
                     "Open: %{y0}<br>" +
@@ -73,7 +73,6 @@ if st.button("Get Stock Data"):
                     "Volume: %{customdata}<br>" +
                     "<extra></extra>"
                 ),
-                customdata=df['Volume']  # Include volume for hover
             ))
 
             # Determine color for volume bars
@@ -90,13 +89,16 @@ if st.button("Get Stock Data"):
                 marker_color=volume_color
             ))
 
-            # Add moving averages for the price
-            if 'MA21' in df.columns:
-                fig.add_trace(go.Scatter(x=df.index, y=df['MA21'], mode='lines', name='MA21', line=dict(color='orange', dash='dash')))
-            if 'MA50' in df.columns:
-                fig.add_trace(go.Scatter(x=df.index, y=df['MA50'], mode='lines', name='MA50', line=dict(color='blue', dash='dash')))
-            if 'MA200' in df.columns:
-                fig.add_trace(go.Scatter(x=df.index, y=df['MA200'], mode='lines', name='MA200', line=dict(color='red', dash='dash')))
+            # Add moving averages for the price if they exist
+            for ma in ['MA21', 'MA50', 'MA200']:
+                if ma in df.columns:
+                    fig.add_trace(go.Scatter(
+                        x=df.index,
+                        y=df[ma],
+                        mode='lines',
+                        name=ma,
+                        line=dict(dash='dash')
+                    ))
 
             # Get the last price for display
             last_price = df['Close'].iloc[-1]
@@ -134,7 +136,7 @@ if st.button("Get Stock Data"):
             """)
 
         elif response.status_code == 404:
-            st.error("Error fetching data: " + response.json()['error'])
+            st.error("Error fetching data: " + response.json().get('error', 'Unknown error'))
         else:
             st.error("An unexpected error occurred.")
 
