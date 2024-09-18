@@ -10,9 +10,8 @@ def get_market_data(tickers=['AAPL']):
         data[ticker] = hist[['Close']]
         
     # Example of calculating a simple MSE (use your own model as needed)
-    # For the sake of this example, we'll just use random values
     predicted_prices = [150] * len(data['AAPL'])  # Dummy predicted prices
     actual_prices = data['AAPL']['Close'].values
     model_mse = mean_squared_error(actual_prices, predicted_prices)
 
-    return data, model_mse
+    return data, model_mse  # Return as tuple (data, model_mse)

@@ -11,12 +11,12 @@ def index():
 
 @app.route('/api/data')
 def get_data():
-    data = get_market_data()
+    data, model_mse = get_market_data()  # Unpack the returned tuple
     response_data = {
         "AAPL": {
             "Dates": list(data['AAPL'].index.strftime('%Y-%m-%d')),
             "Close": data['AAPL']['Close'].tolist(),
-            "Model MSE": data['model_mse']  # Assuming model_mse is calculated in get_market_data
+            "Model MSE": model_mse  # Use the unpacked model_mse
         }
     }
     return jsonify(response_data)
