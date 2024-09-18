@@ -1,38 +1,37 @@
-import pandas as pd
-import requests
 import streamlit as st
-import plotly.graph_objs as go
+import requests
+import pandas as pd
+import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-# Function to calculate default start date based on time frame
-def calculate_default_start_date(time_frame):
-    today = datetime.utcnow()
-    if time_frame == 'd':
-        return today - timedelta(days=180)  # 6 months for daily
-    elif time_frame == 'w':
-        return today - timedelta(days=365)  # 1 year for weekly
-    else:
-        return None  # No default for other time frames
+st.title("Stock Dashboard")
 
-# Main Streamlit application
-st.title("Stock Data Dashboard")
+# Add your company logo
+st.image("UHURULOGO.jpg", width=200)  # Adjust the width as needed
 
-# User input for ticker symbol and time frame
-ticker = st.text_input("Enter stock ticker (e.g., AAPL):", "AAPL")
-time_frame = st.selectbox("Select time frame:", ["d", "w", "1w", "1m"])
+# Input for stock ticker
+ticker = st.text_input("Enter Stock Ticker:", "AAPL")
 
-# Set default start date based on selected time frame
-default_start_date = calculate_default_start_date(time_frame)
+# Select time frame
+time_frame = st.selectbox("Select Time Frame:", ["1m", "5m", "1d", "5d", "1w", "1mo"])
 
 if st.button("Get Stock Data"):
     try:
-        # Format the default start date for the API request
-        start_date_str = default_start_date.strftime('%Y-%m-%d') if default_start_date else None
+        # Determine the start date based on the selected time frame
+        if time_frame in ['1m', '5m']:  # Last 90 minutes for minute selections
+            start_date = (pd.Timestamp.now() - pd.DateOffset(minutes=90)).date()
+        elif time_frame in ['1d', '5d']:  # Last 6 months for daily selections
+            start_date = (pd.Timestamp.today() - pd.DateOffset(months=6)).date()
+        elif time_frame == '1w':  # Last 1 year for weekly selection
+            start_date = (pd.Timestamp.today() - pd.DateOffset(years=1)).date()
+        elif time_frame == '1mo':  # Last 2 years for monthly selection
+            start_date = (pd.Timestamp.today() - pd.DateOffset(years=2)).date()
+        else:
+            start_date = None  # For other time frames
+
         url = f'http://127.0.0.1:5000/stock/{ticker}/{time_frame}'
-        
-        # Only include the start date if it's available
-        if start_date_str:
-            url += f'?start_date={start_date_str}'
+        if start_date:
+            url += f'?start_date={start_date}'
 
         response = requests.get(url)
 
