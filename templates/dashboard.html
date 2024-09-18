@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.5.1/chart.min.js"></script>
+</head>
+<body>
+    <h1>Market Dashboard</h1>
+    <div>
+        <canvas id="stockChart" width="400" height="200"></canvas>
+    </div>
+    <div id="metrics">
+        <h2>Model Metrics</h2>
+        <ul id="metricList"></ul> <!-- List for displaying model metrics -->
+    </div>
+    <script>
+        fetch('/api/data')
+            .then(response => response.json())
+            .then(data => {
+                // Render the chart
+                const labels = data['AAPL']['Dates'];
+                const closePrices = data['AAPL']['Close'];
+                const modelMSE = data['AAPL']['Model MSE'];
+
+                const ctx = document.getElementById('stockChart').getContext('2d');
+                const stockChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'AAPL Close Prices',
+                            data: closePrices,
+                            borderColor: 'rgba(75, 192, 192, 1)',
+                            borderWidth: 2,
+                            fill: false
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Price'
+                                }
+                            }
+                        }
+                    }
+                });
+
+                // Display model metrics
+                const metricList = document.getElementById('metricList');
+                metricList.innerHTML += `<li>Model Mean Squared Error (MSE): ${modelMSE.toFixed(4)}</li>`;
+            });
+    </script>
+</body>
+</html>
