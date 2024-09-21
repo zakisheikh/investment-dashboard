@@ -1,95 +1,72 @@
-# dashboard.py
 import pandas as pd
 import yfinance as yf
-import visualization
-import numpy as np
-import sys
-from datetime import datetime, timedelta
 
-def fetch_stock_data(symbol):
-    # Calculate the date range for the last two years
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=365*2)  # Two years of data
-    
-    stock_data = yf.download(symbol, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
-    stock_data.reset_index(inplace=True)
-    stock_data['Date'] = stock_data['Date'].dt.date  # Keep only the date part
-    print(stock_data.head())  # Debugging line to check the fetched data
-    return stock_data
+def fetch_stock_data(stock_symbol):
+    """Fetch stock data from Yahoo Finance."""
+    try:
+        stock_data = yf.download(stock_symbol, start="2022-09-01", end="2023-09-01)
+        stock_data.reset_index(inplace=True)
+        return stock_data
+    except Exception as e:
+        print(f"Error fetching data: {e}")
+        return pd.DataFrame()
 
 def detect_cup_and_handle(stock_data):
+    """Detect cup and handle patterns in stock data."""
     # Ensure the index is datetime
-    stock_data['Date'] = pd.to_datetime(stock_data['Date'])  # Convert 'Date' to datetime if not already
-    stock_data.set_index('Date', inplace=True)  # Set 'Date' as index if not already
+    stock_data['Date'] = pd.to_datetime(stock_data['Date'])
+    stock_data.set_index('Date', inplace=True)
 
-    potential_cups = pd.DataFrame()  # Initialize as DataFrame instead of list
+    potential_cups = pd.DataFrame()  # Initialize as a DataFrame
     handles = []
 
-    # Your logic to identify cups goes here...
-    
-    # Example logic to populate potential_cups
-    # This is a placeholder for your actual detection logic
-    for idx in range(len(stock_data) - 1):  # Replace with your logic to detect potential cups
-        if some_condition:  # Replace this with actual condition to identify cups
-            potential_cups = potential_cups.append(stock_data.iloc[idx])  # Append as a DataFrame row
-    
-    # Now potential_cups is a DataFrame and you can iterate over it
+    # Iterate through the stock data to find potential cups
+    for idx in range(1, len(stock_data) - 1):
+        # Check for a cup pattern (simple heuristic)
+        if (stock_data['Low'].iloc[idx] < stock_data['Low'].iloc[idx - 1] and
+            stock_data['High'].iloc[idx] > stock_data['High'].iloc[idx - 1]):
+            potential_cups = potential_cups.append(stock_data.iloc[idx])
+
+    # Iterate over potential cups to find handles
     for idx, row in potential_cups.iterrows():
-        cup_date = row.name  # This should now correctly refer to a timestamp
-        
-        # Calculate handle start date
+        cup_date = row.name
         handle_start_date = cup_date + pd.DateOffset(days=10)
-        
+
         # Check if handle_start_date exists in stock_data
         if handle_start_date in stock_data.index:
             handle_data = stock_data.loc[handle_start_date:handle_start_date + pd.DateOffset(days=20)]
-            cup_bottom = row['trough']  # Ensure 'trough' is a valid column in your DataFrame
-            
+            cup_bottom = row['Low']
             max_close = row['Close']
             min_close = handle_data['Close'].min()
             pullback = (max_close - min_close) / max_close
-            
-            if 0.08 <= pullback <= 0.12 and min_close > row['SMA_50']:  # Adjust according to your criteria
+
+            # Check for a valid handle pullback (8% to 12%)
+            if 0.08 <= pullback <= 0.12:
                 handles.append((row.name, handle_data))
 
     return potential_cups, handles  # Return both the cups and handles detected
 
-
-
-import sys
-
-def main(symbol):
-    # Fetch stock data
-    stock_data = fetch_stock_data(symbol)
+def main(stock_symbol):
+    """Main function to execute the cup and handle detection."""
+    print(f"Fetching data for {stock_symbol}...")
+    stock_data = fetch_stock_data(stock_symbol)
     
     if stock_data.empty:
-        print(f"No data found for symbol: {symbol}")
+        print("No data fetched. Exiting...")
         return
-    
-    print("Fetching data completed. Detecting patterns...")  # Debugging line
+
+    print("Fetching data completed. Detecting patterns...")
     cups, handles = detect_cup_and_handle(stock_data)
     
-    if cups.empty:
-        print(f"No Cup and Handle patterns detected for {symbol}.")
-    else:
-        print(f"Detected {len(cups)} Cup and Handle patterns for {symbol}.")
-        # Debugging output of detected cups and handles
-        print("Detected Cups:")
-        print(cups)
-        
-        print("Detected Handles:")
-        for handle in handles:
-            print(f"Handle at: {handle[0]} with data: {handle[1]}")
-        
-        # Visualization part
-        visualization.plot_stock_data_with_pattern(stock_data, cups, handles)
-        visualization.summarize_cup_and_handle()
-        print("Visualization and summary completed.")
+    # Output the results
+    print(f"Detected {len(cups)} potential cups.")
+    for cup in cups.iterrows():
+        print(f"Cup detected on {cup[0]}: Low = {cup[1]['Low']}, Close = {cup[1]['Close']}")
+
+    print(f"Detected {len(handles)} potential handles.")
+    for handle in handles:
+        print(f"Handle detected on {handle[0]} with data:\n{handle[1]}")
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python dashboard.py <STOCK_SYMBOL>")
-    else:
-        stock_symbol = sys.argv[1].strip().upper()  # Read the stock symbol from command line
-        main(stock_symbol)
-
+    stock_symbol = "AMD"  # Example stock symbol
+    main(stock_symbol)
