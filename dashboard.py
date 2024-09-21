@@ -36,15 +36,18 @@ def detect_cup_and_handle(stock_data):
     # Step 5: Check for handle formation
     handles = []
     for idx, row in potential_cups.iterrows():
-        # Ensure indices are valid before accessing stock_data
-        handle_start_idx = row.name + pd.DateOffset(days=10)  # Handles typically form shortly after the cup
+        # Access the date directly from stock_data's index
+        cup_date = stock_data.index[row.name]  # Get the actual date for the current row
         
-        # Check if handle_start_idx is in the DataFrame index
-        if handle_start_idx in stock_data.index:
-            handle_data = stock_data.loc[handle_start_idx:handle_start_idx + pd.DateOffset(days=20)]  # 1-2 week handle range
+        # Add the days to the date to get the start of the handle
+        handle_start_date = cup_date + pd.DateOffset(days=10)  # Handles typically form shortly after the cup
+        
+        # Check if handle_start_date is in the DataFrame index
+        if handle_start_date in stock_data.index:
+            handle_data = stock_data.loc[handle_start_date:handle_start_date + pd.DateOffset(days=20)]  # 1-2 week handle range
             
             # Extract the cup bottom to calculate pullback
-            cup_bottom = row['trough']  # Make sure this is defined in your calculations
+            cup_bottom = row['trough']  # Ensure this is defined properly
             
             max_close = row['Close']
             min_close = handle_data['Close'].min()
@@ -53,7 +56,7 @@ def detect_cup_and_handle(stock_data):
             # Ensure pullback conditions are met
             if 0.08 <= pullback <= 0.12 and min_close > row['SMA_50']:  # Ensure handle is in upper half of cup
                 handles.append((row.name, handle_data))
-    
+
     return potential_cups, handles  # Return both the cups and handles detected
 
 import sys
