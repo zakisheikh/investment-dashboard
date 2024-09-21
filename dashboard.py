@@ -18,33 +18,24 @@ def fetch_stock_data(symbol):
     return stock_data
 
 def detect_cup_and_handle(stock_data):
-    # Step 1: Calculate the moving average (50-day for smoothing out short-term trends)
-    stock_data['SMA_50'] = stock_data['Close'].rolling(window=50).mean()
-    
-    # Step 2: Calculate the depth of the potential cup
-    stock_data['peak'] = stock_data['Close'].rolling(window=30).max()  # Finding peaks (use 30-day window)
-    stock_data['trough'] = stock_data['Close'].rolling(window=30).min()  # Finding troughs
-    stock_data['depth'] = (stock_data['peak'] - stock_data['trough']) / stock_data['peak']  # Depth of the cup
-    
-    # Step 3: Identify potential cups (U-shaped bottoms, with a depth not exceeding 33%)
-    potential_cups = stock_data[(stock_data['depth'] <= 0.33) & (stock_data['depth'] >= 0.15)].copy()
-    
-    # Step 4: Check duration of the cup (between 7 to 65 weeks ~ 35 to 325 trading days)
-    potential_cups['cup_duration'] = potential_cups['Close'].rolling(window=50).apply(lambda x: len(x))  # Rough estimate of duration
-    potential_cups = potential_cups[(potential_cups['cup_duration'] >= 35) & (potential_cups['cup_duration'] <= 325)]
-    
-    # Step 5: Check for handle formation
+    # Ensure the index is datetime
+    stock_data['Date'] = pd.to_datetime(stock_data['Date'])  # Convert 'Date' to datetime if not already
+    stock_data.set_index('Date', inplace=True)  # Set 'Date' as index if not already
+
+    potential_cups = []  # Assuming this is a list to store potential cup data
     handles = []
+    
+    # Your logic to identify cups goes here...
     for idx, row in potential_cups.iterrows():
-        # Access the date directly from stock_data's index
-        cup_date = stock_data.index[row.name]  # Get the actual date for the current row
+        # Access the date directly from the DataFrame's index
+        cup_date = row.name  # This should be a timestamp now
         
-        # Add the days to the date to get the start of the handle
+        # Use cup_date to calculate the handle start date
         handle_start_date = cup_date + pd.DateOffset(days=10)  # Handles typically form shortly after the cup
-        
+
         # Check if handle_start_date is in the DataFrame index
         if handle_start_date in stock_data.index:
-            handle_data = stock_data.loc[handle_start_date:handle_start_date + pd.DateOffset(days=20)]  # 1-2 week handle range
+            handle_data = stock_data.loc[handle_start_date:handle_start_date + pd.DateOffset(days=20)]  # Handle range
             
             # Extract the cup bottom to calculate pullback
             cup_bottom = row['trough']  # Ensure this is defined properly
@@ -58,6 +49,7 @@ def detect_cup_and_handle(stock_data):
                 handles.append((row.name, handle_data))
 
     return potential_cups, handles  # Return both the cups and handles detected
+
 
 import sys
 
