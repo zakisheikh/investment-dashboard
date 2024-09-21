@@ -58,4 +58,4 @@ def main(symbol):
     visualization.summarize_cup_and_handle()
 
 if __name__ == "__main__":
-    main("AAPL")  # Replace "AAPL" with any stock symbol you want to analyze
+    main("NVDA")  # Replace "AAPL" with any stock symbol you want to analyze
