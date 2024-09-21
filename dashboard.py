@@ -5,20 +5,15 @@ from datetime import datetime, timedelta
 def fetch_stock_data(stock_symbol):
     """Fetch stock data from Yahoo Finance."""
     try:
-        # Fetch data for a larger date range to find the actual available history
         stock_data_full = yf.download(stock_symbol, start="2020-01-01", end=datetime.now())
-        
-        # Get the actual start date of the fetched data
         actual_start_date = stock_data_full.index.min()
         current_date = datetime.now()
 
-        # Set the start date to either two years ago or the actual start date
         if actual_start_date < (current_date - timedelta(days=730)):
             start_date = actual_start_date
         else:
             start_date = current_date - timedelta(days=730)
-        
-        # Fetch data for the determined date range
+
         stock_data = yf.download(stock_symbol, start=start_date, end=current_date)
         stock_data.reset_index(inplace=True)
         return stock_data
@@ -42,7 +37,7 @@ def detect_cup_and_handle(stock_data):
 
     potential_cups_df = pd.DataFrame(potential_cups)
 
-    # Iterate over potential cups to find handles
+    # Iterate over potential cups to find handles and calculate buy points
     for idx, row in potential_cups_df.iterrows():
         cup_date = row.name
         handle_start_date = cup_date + pd.DateOffset(days=10)
@@ -56,6 +51,17 @@ def detect_cup_and_handle(stock_data):
 
             if 0.08 <= pullback <= 0.12:
                 handles.append((row.name, handle_data))
+
+                # Calculate buy point as the peak of the right side of the cup
+                right_side_peak = handle_data['High'].max()  # Highest point during the handle
+                buy_point = right_side_peak
+                buy_zone_low = buy_point  # Buy zone starts at buy point
+                buy_zone_high = buy_point * 1.05  # 5% above buy point
+
+                # Store cup with buy point and zone information
+                potential_cups_df.at[row.name, 'Buy Point'] = buy_point
+                potential_cups_df.at[row.name, 'Buy Zone Low'] = buy_zone_low
+                potential_cups_df.at[row.name, 'Buy Zone High'] = buy_zone_high
 
     return potential_cups_df, handles
 
@@ -73,7 +79,8 @@ def main(stock_symbol):
     
     print(f"Detected {len(cups)} potential cups.")
     for cup in cups.iterrows():
-        print(f"Cup detected on {cup[0]}: Low = {cup[1]['Low']}, Close = {cup[1]['Close']}")
+        print(f"Cup detected on {cup[0]}: Low = {cup[1]['Low']}, Close = {cup[1]['Close']}, "
+              f"Buy Point = {cup[1]['Buy Point']}, Buy Zone = ({cup[1]['Buy Zone Low']}, {cup[1]['Buy Zone High']})")
 
     print(f"Detected {len(handles)} potential handles.")
     for handle in handles:
