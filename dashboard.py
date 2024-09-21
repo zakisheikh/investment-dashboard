@@ -3,9 +3,14 @@ import pandas as pd
 import yfinance as yf
 import visualization
 import numpy as np
+from datetime import datetime, timedelta
 
 def fetch_stock_data(symbol):
-    stock_data = yf.download(symbol, start="2020-01-01", end="2024-01-01")
+    # Calculate the date range for the last two years
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=365*2)  # Two years of data
+    
+    stock_data = yf.download(symbol, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
     stock_data.reset_index(inplace=True)
     stock_data['Date'] = stock_data['Date'].dt.date  # Keep only the date part
     return stock_data
@@ -53,9 +58,17 @@ def detect_cup_and_handle(stock_data):
 
 def main(symbol):
     stock_data = fetch_stock_data(symbol)
+    if stock_data.empty:
+        print(f"No data found for symbol: {symbol}")
+        return
+    
     cups, handles = detect_cup_and_handle(stock_data)
-    visualization.plot_stock_data_with_pattern(stock_data, cups, handles)
-    visualization.summarize_cup_and_handle()
+    
+    if cups.empty:
+        print(f"No Cup and Handle patterns detected for {symbol}.")
+    else:
+        visualization.plot_stock_data_with_pattern(stock_data, cups, handles)
+        visualization.summarize_cup_and_handle()
 
 if __name__ == "__main__":
-    main("GOOGL")  # Replace "AAPL" with any stock symbol you want to analyze
+    main("NVDA")  # Replace "NVDA" with any stock symbol you want to analyze
