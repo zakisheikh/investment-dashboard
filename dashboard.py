@@ -22,33 +22,38 @@ def detect_cup_and_handle(stock_data):
     stock_data['Date'] = pd.to_datetime(stock_data['Date'])  # Convert 'Date' to datetime if not already
     stock_data.set_index('Date', inplace=True)  # Set 'Date' as index if not already
 
-    potential_cups = []  # Assuming this is a list to store potential cup data
+    potential_cups = pd.DataFrame()  # Initialize as DataFrame instead of list
     handles = []
-    
-    # Your logic to identify cups goes here...
-    for idx, row in potential_cups.iterrows():
-        # Access the date directly from the DataFrame's index
-        cup_date = row.name  # This should be a timestamp now
-        
-        # Use cup_date to calculate the handle start date
-        handle_start_date = cup_date + pd.DateOffset(days=10)  # Handles typically form shortly after the cup
 
-        # Check if handle_start_date is in the DataFrame index
+    # Your logic to identify cups goes here...
+    
+    # Example logic to populate potential_cups
+    # This is a placeholder for your actual detection logic
+    for idx in range(len(stock_data) - 1):  # Replace with your logic to detect potential cups
+        if some_condition:  # Replace this with actual condition to identify cups
+            potential_cups = potential_cups.append(stock_data.iloc[idx])  # Append as a DataFrame row
+    
+    # Now potential_cups is a DataFrame and you can iterate over it
+    for idx, row in potential_cups.iterrows():
+        cup_date = row.name  # This should now correctly refer to a timestamp
+        
+        # Calculate handle start date
+        handle_start_date = cup_date + pd.DateOffset(days=10)
+        
+        # Check if handle_start_date exists in stock_data
         if handle_start_date in stock_data.index:
-            handle_data = stock_data.loc[handle_start_date:handle_start_date + pd.DateOffset(days=20)]  # Handle range
-            
-            # Extract the cup bottom to calculate pullback
-            cup_bottom = row['trough']  # Ensure this is defined properly
+            handle_data = stock_data.loc[handle_start_date:handle_start_date + pd.DateOffset(days=20)]
+            cup_bottom = row['trough']  # Ensure 'trough' is a valid column in your DataFrame
             
             max_close = row['Close']
             min_close = handle_data['Close'].min()
             pullback = (max_close - min_close) / max_close
             
-            # Ensure pullback conditions are met
-            if 0.08 <= pullback <= 0.12 and min_close > row['SMA_50']:  # Ensure handle is in upper half of cup
+            if 0.08 <= pullback <= 0.12 and min_close > row['SMA_50']:  # Adjust according to your criteria
                 handles.append((row.name, handle_data))
 
     return potential_cups, handles  # Return both the cups and handles detected
+
 
 
 import sys
