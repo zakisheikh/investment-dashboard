@@ -1,17 +1,22 @@
-import yfinance as yf
-import pandas as pd
-from sklearn.metrics import mean_squared_error
+# dashboard.py
+import sys
+import data_fetch
+import pattern_recognition
+import visualization
 
-def get_market_data(tickers=['AAPL']):
-    data = {}
-    for ticker in tickers:
-        stock = yf.Ticker(ticker)
-        hist = stock.history(period="1y", interval="1d")
-        data[ticker] = hist[['Close']]
-        
-    # Example of calculating a simple MSE (use your own model as needed)
-    predicted_prices = [150] * len(data['AAPL'])  # Dummy predicted prices
-    actual_prices = data['AAPL']['Close'].values
-    model_mse = mean_squared_error(actual_prices, predicted_prices)
+def main(symbol):
+    # Get data for last two years dynamically
+    stock_data = data_fetch.get_stock_data(symbol)
+    
+    # Detect Cup-with-Handle pattern
+    cups, handles = pattern_recognition.detect_cup_with_handle(stock_data)
+    
+    # Visualize stock price and pattern
+    visualization.plot_stock_data_with_pattern(stock_data, cups, handles)
 
-    return data, model_mse  # Return as tuple (data, model_mse)
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python dashboard.py <stock_symbol>")
+    else:
+        symbol = sys.argv[1]
+        main(symbol)
