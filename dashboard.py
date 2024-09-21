@@ -17,7 +17,7 @@ def detect_cup_and_handle(stock_data):
     stock_data['Date'] = pd.to_datetime(stock_data['Date'])
     stock_data.set_index('Date', inplace=True)
 
-    potential_cups = pd.DataFrame()  # Initialize as a DataFrame
+    potential_cups = []  # Use a list to store detected cups
     handles = []
 
     # Iterate through the stock data to find potential cups
@@ -25,10 +25,13 @@ def detect_cup_and_handle(stock_data):
         # Check for a cup pattern (simple heuristic)
         if (stock_data['Low'].iloc[idx] < stock_data['Low'].iloc[idx - 1] and
             stock_data['High'].iloc[idx] > stock_data['High'].iloc[idx - 1]):
-            potential_cups = potential_cups.append(stock_data.iloc[idx])
+            potential_cups.append(stock_data.iloc[idx])  # Append the row to the list
+
+    # Convert the list of cups to a DataFrame
+    potential_cups_df = pd.DataFrame(potential_cups)
 
     # Iterate over potential cups to find handles
-    for idx, row in potential_cups.iterrows():
+    for idx, row in potential_cups_df.iterrows():
         cup_date = row.name
         handle_start_date = cup_date + pd.DateOffset(days=10)
 
@@ -44,7 +47,7 @@ def detect_cup_and_handle(stock_data):
             if 0.08 <= pullback <= 0.12:
                 handles.append((row.name, handle_data))
 
-    return potential_cups, handles  # Return both the cups and handles detected
+    return potential_cups_df, handles  # Return both the cups and handles detected
 
 def main(stock_symbol):
     """Main function to execute the cup and handle detection."""
