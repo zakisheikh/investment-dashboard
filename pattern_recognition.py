@@ -11,7 +11,7 @@ def detect_cup_with_handle(stock_data):
     stock_data['depth'] = (stock_data['peak'] - stock_data['trough']) / stock_data['peak']  # Depth of the cup
     
     # Step 3: Identify potential cups (U-shaped bottoms, with a depth not exceeding 33%)
-    potential_cups = stock_data[(stock_data['depth'] <= 0.33) & (stock_data['depth'] >= 0.15)]
+    potential_cups = stock_data[(stock_data['depth'] <= 0.33) & (stock_data['depth'] >= 0.15)].copy()
     
     # Step 4: Check duration of the cup (between 7 to 65 weeks ~ 35 to 325 trading days)
     potential_cups['cup_duration'] = potential_cups['Close'].rolling(window=50).apply(lambda x: len(x))  # Rough estimate of duration
@@ -21,9 +21,9 @@ def detect_cup_with_handle(stock_data):
     handles = []
     for idx, row in potential_cups.iterrows():
         # Handle should form on the right side of the cup and be a small pullback (8%-12%) in the upper half of the cup
-        handle_start_idx = idx + 10  # Handles typically form shortly after the cup
-        if handle_start_idx < len(stock_data):
-            handle_data = stock_data.iloc[handle_start_idx:handle_start_idx + 20]  # 1-2 week handle range
+        handle_start_idx = row.name + pd.DateOffset(days=10)  # Handles typically form shortly after the cup
+        if handle_start_idx in stock_data.index:
+            handle_data = stock_data.loc[handle_start_idx:handle_start_idx + pd.DateOffset(days=20)]  # 1-2 week handle range
             max_close = row['Close']
             min_close = handle_data['Close'].min()
             pullback = (max_close - min_close) / max_close
