@@ -14,6 +14,7 @@ def fetch_stock_data(symbol):
     stock_data = yf.download(symbol, start=start_date.strftime('%Y-%m-%d'), end=end_date.strftime('%Y-%m-%d'))
     stock_data.reset_index(inplace=True)
     stock_data['Date'] = stock_data['Date'].dt.date  # Keep only the date part
+    print(stock_data.head())  # Debugging line to check the fetched data
     return stock_data
 
 def detect_cup_and_handle(stock_data):
@@ -63,6 +64,7 @@ def main(symbol):
         print(f"No data found for symbol: {symbol}")
         return
     
+    print("Fetching data completed. Detecting patterns...")  # Debugging line
     cups, handles = detect_cup_and_handle(stock_data)
     
     if cups.empty:
