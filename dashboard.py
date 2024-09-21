@@ -18,45 +18,43 @@ def fetch_stock_data(symbol):
     return stock_data
 
 def detect_cup_and_handle(stock_data):
-    cups = []
+    # Step 1: Calculate the moving average (50-day for smoothing out short-term trends)
+    stock_data['SMA_50'] = stock_data['Close'].rolling(window=50).mean()
+    
+    # Step 2: Calculate the depth of the potential cup
+    stock_data['peak'] = stock_data['Close'].rolling(window=30).max()  # Finding peaks (use 30-day window)
+    stock_data['trough'] = stock_data['Close'].rolling(window=30).min()  # Finding troughs
+    stock_data['depth'] = (stock_data['peak'] - stock_data['trough']) / stock_data['peak']  # Depth of the cup
+    
+    # Step 3: Identify potential cups (U-shaped bottoms, with a depth not exceeding 33%)
+    potential_cups = stock_data[(stock_data['depth'] <= 0.33) & (stock_data['depth'] >= 0.15)].copy()
+    
+    # Step 4: Check duration of the cup (between 7 to 65 weeks ~ 35 to 325 trading days)
+    potential_cups['cup_duration'] = potential_cups['Close'].rolling(window=50).apply(lambda x: len(x))  # Rough estimate of duration
+    potential_cups = potential_cups[(potential_cups['cup_duration'] >= 35) & (potential_cups['cup_duration'] <= 325)]
+    
+    # Step 5: Check for handle formation
     handles = []
-    
-    # Parameters
-    min_depth = 0.1  # Minimum cup depth as a percentage of the peak
-    max_handle_depth = 0.05  # Maximum handle depth as a percentage of the peak
-    min_handle_length = 3  # Minimum handle length in days
-
-    # Identify potential cup bottoms and peaks
-    for i in range(2, len(stock_data) - 2):
-        if stock_data['Close'][i] < stock_data['Close'][i - 1] and stock_data['Close'][i] < stock_data['Close'][i + 1]:  # Local minimum
-            cup_bottom = stock_data['Close'][i]
-            cup_start = i - 2
-            cup_end = i + 2
+    for idx, row in potential_cups.iterrows():
+        # Ensure indices are valid before accessing stock_data
+        handle_start_idx = row.name + pd.DateOffset(days=10)  # Handles typically form shortly after the cup
+        
+        # Check if handle_start_idx is in the DataFrame index
+        if handle_start_idx in stock_data.index:
+            handle_data = stock_data.loc[handle_start_idx:handle_start_idx + pd.DateOffset(days=20)]  # 1-2 week handle range
             
-            if (cup_end < len(stock_data) and stock_data['Close'][cup_start] > cup_bottom * (1 + min_depth)):
-                # We have a potential cup, now check for the handle
-                handle_start = cup_end + 1
-                while handle_start < len(stock_data):
-                    if stock_data['Close'][handle_start] < cup_bottom * (1 + max_handle_depth):
-                        handle_end = handle_start
-                        while handle_end < len(stock_data) and stock_data['Close'][handle_end] < stock_data['Close'][handle_end - 1]:
-                            handle_end += 1
-                        if handle_end - handle_start >= min_handle_length:
-                            # Valid handle found
-                            cups.append({
-                                'Start_Date': stock_data['Date'][cup_start],
-                                'Bottom_Date': stock_data['Date'][i],
-                                'End_Date': stock_data['Date'][cup_end],
-                                'Handle_End_Date': stock_data['Date'][handle_end - 1],
-                                'Bottom_Price': cup_bottom,
-                                'Breakout_Date': stock_data['Date'][handle_end],
-                                'Breakout_Price': stock_data['Close'][handle_end]
-                            })
-                            handles.append((handle_start, stock_data.iloc[handle_start:handle_end]))
-                        break  # No need to check further for this cup
+            # Extract the cup bottom to calculate pullback
+            cup_bottom = row['trough']  # Make sure this is defined in your calculations
+            
+            max_close = row['Close']
+            min_close = handle_data['Close'].min()
+            pullback = (max_close - min_close) / max_close
+            
+            # Ensure pullback conditions are met
+            if 0.08 <= pullback <= 0.12 and min_close > row['SMA_50']:  # Ensure handle is in upper half of cup
+                handles.append((row.name, handle_data))
     
-    cups_df = pd.DataFrame(cups)
-    return cups_df, handles
+    return potential_cups, handles  # Return both the cups and handles detected
 
 import sys
 
