@@ -3,6 +3,7 @@ import pandas as pd
 import yfinance as yf
 import visualization
 import numpy as np
+import sys
 from datetime import datetime, timedelta
 
 def fetch_stock_data(symbol):
@@ -71,4 +72,8 @@ def main(symbol):
         visualization.summarize_cup_and_handle()
 
 if __name__ == "__main__":
-    main("NVDA")  # Replace "NVDA" with any stock symbol you want to analyze
+    if len(sys.argv) != 2:
+        print("Usage: python dashboard.py <STOCK_SYMBOL>")
+    else:
+        stock_symbol = sys.argv[1].strip().upper()  # Read the stock symbol from command line
+        main(stock_symbol)
