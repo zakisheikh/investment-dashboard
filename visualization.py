@@ -7,8 +7,9 @@ def plot_stock_data_with_pattern(stock_data, cups, handles):
     
     # Highlight detected cups
     for idx, cup_data in cups.iterrows():
-        plt.axvline(x=idx, color='orange', linestyle='--', label='Cup Start' if idx == cups.index[0] else "")
-        plt.plot(stock_data.index[cup_data.name], cup_data['Close'], 'bo', markersize=8, label='Cup Peak' if idx == cups.index[0] else "")
+        cup_peak_index = stock_data.index.get_loc(cup_data.name)  # Get integer location of the cup peak
+        plt.axvline(x=cup_data.name, color='orange', linestyle='--', label='Cup Start' if idx == cups.index[0] else "")
+        plt.plot(stock_data.index[cup_peak_index], cup_data['Close'], 'bo', markersize=8, label='Cup Peak' if idx == cups.index[0] else "")
     
     # Highlight handles if any are found
     if handles:
