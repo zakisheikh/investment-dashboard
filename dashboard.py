@@ -4,7 +4,7 @@ import yfinance as yf
 def fetch_stock_data(stock_symbol):
     """Fetch stock data from Yahoo Finance."""
     try:
-        stock_data = yf.download(stock_symbol, start="2022-09-01", end="2023-09-01)
+        stock_data = yf.download(stock_symbol, start="2022-09-01", end="2023-09-01")
         stock_data.reset_index(inplace=True)
         return stock_data
     except Exception as e:
