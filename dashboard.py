@@ -58,8 +58,12 @@ def detect_cup_and_handle(stock_data):
     cups_df = pd.DataFrame(cups)
     return cups_df, handles
 
+import sys
+
 def main(symbol):
+    # Fetch stock data
     stock_data = fetch_stock_data(symbol)
+    
     if stock_data.empty:
         print(f"No data found for symbol: {symbol}")
         return
@@ -70,8 +74,19 @@ def main(symbol):
     if cups.empty:
         print(f"No Cup and Handle patterns detected for {symbol}.")
     else:
+        print(f"Detected {len(cups)} Cup and Handle patterns for {symbol}.")
+        # Debugging output of detected cups and handles
+        print("Detected Cups:")
+        print(cups)
+        
+        print("Detected Handles:")
+        for handle in handles:
+            print(f"Handle at: {handle[0]} with data: {handle[1]}")
+        
+        # Visualization part
         visualization.plot_stock_data_with_pattern(stock_data, cups, handles)
         visualization.summarize_cup_and_handle()
+        print("Visualization and summary completed.")
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -79,3 +94,4 @@ if __name__ == "__main__":
     else:
         stock_symbol = sys.argv[1].strip().upper()  # Read the stock symbol from command line
         main(stock_symbol)
+
