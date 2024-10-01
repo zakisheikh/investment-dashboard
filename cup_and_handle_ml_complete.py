@@ -270,17 +270,21 @@ def predict_on_new_data(model, data, window_size):
     return predictions, windows
 
 def get_analysis_type():
+    print("Prompting for analysis type...")
     while True:
         analysis_type = input('Select analysis type ("short-term" or "long-term"): ').strip().lower()
         if analysis_type in ['short-term', 'long-term']:
+            print(f"Analysis type selected: {analysis_type}")
             return analysis_type
         else:
             print('Invalid input. Please enter "short-term" or "long-term".')
 
 def get_ticker_symbol():
+    print("Prompting for ticker symbol...")
     while True:
         ticker = input('Enter the ticker symbol (e.g., "AAPL", "MSFT"): ').strip().upper()
         if ticker:
+            print(f"Ticker symbol entered: {ticker}")
             return ticker
         else:
             print('Invalid input. Please enter a valid ticker symbol.')
