@@ -40,13 +40,13 @@ def create_windows(data, window_size):
     - window_size (int): Size of the window.
 
     Returns:
-    - windows (ndarray): Array of windows.
+    - windows (list): List of DataFrame windows.
     """
     windows = []
     for i in range(len(data) - window_size + 1):
         window = data[i:i+window_size].copy()
         windows.append(window)
-    return np.array(windows)
+    return windows  # Return the list directly
 
 # Step 2: Data Labeling
 
