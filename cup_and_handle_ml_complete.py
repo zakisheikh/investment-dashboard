@@ -308,7 +308,8 @@ if __name__ == '__main__':
 
         # Calculate dynamic dates
         end_date = datetime.today()
-        start_date = end_date - timedelta(days=365)  # Fetch past 1 year of data
+        required_days = window_size + max_cup_length + 100
+        start_date = end_date - timedelta(days=required_days)
     elif analysis_type == 'long-term':
         interval = '1wk'  # Weekly data
         window_size = 65
@@ -322,129 +323,148 @@ if __name__ == '__main__':
 
         # Calculate dynamic dates
         end_date = datetime.today()
-        start_date = end_date - timedelta(weeks=130)  # Fetch past 2.5 years of data
+        required_weeks = window_size + max_cup_length + 52
+        start_date = end_date - timedelta(weeks=required_weeks)
     else:
         raise ValueError('Invalid analysis type selected.')
 
-    # Convert dates to strings in 'YYYY-MM-DD' format
+    # Convert dates to strings
     start_date_str = start_date.strftime('%Y-%m-%d')
     end_date_str = end_date.strftime('%Y-%m-%d')
 
     # Fetch data
     data = fetch_stock_data(ticker, start_date_str, end_date_str, interval)
-    if data.empty:
-        print(f"No data fetched for ticker '{ticker}'. Please check the ticker symbol and try again.")
+    if data.empty or len(data) < window_size:
+        print(f"Not enough data fetched for ticker '{ticker}'. Please check the ticker symbol or date range and try again.")
         sys.exit(1)
     print(f"Fetched {len(data)} rows of data for {ticker} from {start_date_str} to {end_date_str}.")
+    if len(data) < window_size + max_cup_length + max_handle_length:
+        print(f"Not enough data to perform {analysis_type} analysis for {ticker}.")
+        sys.exit(1)
 
-    # Label windows
-    labels = label_windows(windows, min_cup_length, max_cup_length, min_handle_length,
-                           max_handle_length, min_depth, max_depth, handle_max_retrace)
-    positive_samples = labels.sum()
-    negative_samples = len(labels) - positive_samples
-    print(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
+# Label windows
+labels = label_windows(windows, min_cup_length, max_cup_length, min_handle_length,
+                       max_handle_length, min_depth, max_depth, handle_max_retrace)
+positive_samples = labels.sum()
+negative_samples = len(labels) - positive_samples
+print(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
 
-    # Preprocess windows
-    X = preprocess_windows(windows)
-    y = labels
+# Preprocess windows
+X = preprocess_windows(windows)
+y = labels
 
-    # Split data into training, validation, and test sets
-    X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.15, random_state=42, stratify=y)
-    X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.15 / 0.85, random_state=42, stratify=y_temp)
+# Split data into training, validation, and test sets
+X_temp, X_test, y_temp, y_test = train_test_split(X, y, test_size=0.15, random_state=42, stratify=y)
+X_train, X_val, y_train, y_val = train_test_split(X_temp, y_temp, test_size=0.15 / 0.85, random_state=42, stratify=y_temp)
 
-    print(f"Training samples: {len(y_train)}, Validation samples: {len(y_val)}, Test samples: {len(y_test)}")
+print(f"Training samples: {len(y_train)}, Validation samples: {len(y_val)}, Test samples: {len(y_test)}")
 
-    # Build model
-    input_shape = (X_train.shape[1], X_train.shape[2])
-    model = build_cnn_model(input_shape)
+# Build model
+input_shape = (X_train.shape[1], X_train.shape[2])
+model = build_cnn_model(input_shape)
 
-    # Train model
-    history = train_model(model, X_train, y_train, X_val, y_val)
+# Train model
+history = train_model(model, X_train, y_train, X_val, y_val)
 
-    # Evaluate model
-    evaluate_model(model, X_test, y_test)
+# Evaluate model
+evaluate_model(model, X_test, y_test)
 
-    # Plot training history
-    plt.figure(figsize=(12, 4))
+# Plot training history
+plt.figure(figsize=(12, 4))
 
-    plt.subplot(1, 2, 1)
-    plt.plot(history.history['accuracy'], label='Train Acc')
-    plt.plot(history.history['val_accuracy'], label='Val Acc')
-    plt.title('Accuracy')
-    plt.legend()
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'], label='Train Acc')
+plt.plot(history.history['val_accuracy'], label='Val Acc')
+plt.title('Accuracy')
+plt.legend()
 
-    plt.subplot(1, 2, 2)
-    plt.plot(history.history['loss'], label='Train Loss')
-    plt.plot(history.history['val_loss'], label='Val Loss')
-    plt.title('Loss')
-    plt.legend()
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Val Loss')
+plt.title('Loss')
+plt.legend()
 
+plt.show()
+
+# Save the model
+model_filename = f'cup_and_handle_cnn_model_{ticker}.keras'
+model.save(model_filename)
+print(f"Model saved as '{model_filename}'.")
+
+# Predict on new data
+# Calculate dynamic dates for new data
+if analysis_type == 'short-term':
+    new_end_date = datetime.today()
+    new_start_date = new_end_date - timedelta(days=window_size)
+elif analysis_type == 'long-term':
+    new_end_date = datetime.today()
+    new_start_date = new_end_date - timedelta(weeks=window_size)
+else:
+    raise ValueError('Invalid analysis type selected.')
+
+# Convert dates to strings
+new_start_date_str = new_start_date.strftime('%Y-%m-%d')
+new_end_date_str = new_end_date.strftime('%Y-%m-%d')
+
+# Fetch new data
+new_data = fetch_stock_data(ticker, new_start_date_str, new_end_date_str, interval)
+if new_data.empty:
+    print(f"No new data fetched for ticker '{ticker}'. Please check the ticker symbol and try again.")
+    sys.exit(1)
+print(f"Fetched {len(new_data)} rows of new data for {ticker} from {new_start_date_str} to {new_end_date_str}.")
+
+# Predict on new data
+predictions, new_windows = predict_on_new_data(model, new_data, window_size, min_cup_length,
+                                               max_cup_length, min_handle_length, max_handle_length,
+                                               min_depth, max_depth, handle_max_retrace)
+
+# Find windows where pattern is predicted
+pattern_indices = np.where(predictions == 1)[0]
+print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
+
+# Initialize list to store pattern details
+pattern_details = []
+
+for idx in pattern_indices:
+    window = new_windows[idx]
+    dates = window.index
+    start_date = dates[0].strftime('%Y-%m-%d')
+    end_date = dates[-1].strftime('%Y-%m-%d')
+    prices = window['Adj Close']
+    min_price = prices.min()
+    max_price = prices.max()
+
+    print(f"\nPattern detected in {ticker} from {start_date} to {end_date} (Index {idx})")
+    print(f"Price range: ${min_price:.2f} - ${max_price:.2f}")
+
+    # Append details to list
+    pattern_details.append({
+        'Ticker': ticker,
+        'Start Date': start_date,
+        'End Date': end_date,
+        'Min Price': min_price,
+        'Max Price': max_price
+    })
+
+    # Plot the detected pattern
+    plt.figure(figsize=(10, 5))
+    plt.plot(dates, prices)
+    plt.title(f"Cup and Handle Pattern Detected in {ticker}\n{start_date} to {end_date}")
+    plt.xlabel('Date')
+    plt.ylabel('Adjusted Close Price')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
     plt.show()
 
-    # Save the model
-    model_filename = f'cup_and_handle_cnn_model_{ticker}.keras'
-    model.save(model_filename)
-    print(f"Model saved as '{model_filename}'.")
+    # Optionally, save the plot
+    # plot_filename = f"{ticker}_pattern_{idx}_{start_date}_to_{end_date}.png"
+    # plt.savefig(plot_filename)
+    # print(f"Plot saved as {plot_filename}")
 
-    # Predict on new data
-    new_start_date = '2023-09-30'
-    new_end_date = '2023-12-31'
-    new_data = fetch_stock_data(ticker, new_start_date, new_end_date, interval)
-    if new_data.empty:
-        print(f"No new data fetched for ticker '{ticker}'. Please check the ticker symbol and try again.")
-        sys.exit(1)
-    predictions, new_windows = predict_on_new_data(model, new_data, window_size, min_cup_length,
-                                                   max_cup_length, min_handle_length, max_handle_length,
-                                                   min_depth, max_depth, handle_max_retrace)
-
-    # Find windows where pattern is predicted
-    pattern_indices = np.where(predictions == 1)[0]
-    print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
-
-    # Initialize list to store pattern details
-    pattern_details = []
-
-    for idx in pattern_indices:
-        window = new_windows[idx]
-        dates = window.index
-        start_date = dates[0].strftime('%Y-%m-%d')
-        end_date = dates[-1].strftime('%Y-%m-%d')
-        prices = window['Adj Close']
-        min_price = prices.min()
-        max_price = prices.max()
-
-        print(f"\nPattern detected in {ticker} from {start_date} to {end_date} (Index {idx})")
-        print(f"Price range: ${min_price:.2f} - ${max_price:.2f}")
-
-        # Append details to list
-        pattern_details.append({
-            'Ticker': ticker,
-            'Start Date': start_date,
-            'End Date': end_date,
-            'Min Price': min_price,
-            'Max Price': max_price
-        })
-
-        # Plot the detected pattern
-        plt.figure(figsize=(10, 5))
-        plt.plot(dates, prices)
-        plt.title(f"Cup and Handle Pattern Detected in {ticker}\n{start_date} to {end_date}")
-        plt.xlabel('Date')
-        plt.ylabel('Adjusted Close Price')
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        plt.show()
-
-        # Optionally, save the plot
-        # plot_filename = f"{ticker}_pattern_{idx}_{start_date}_to_{end_date}.png"
-        # plt.savefig(plot_filename)
-        # print(f"Plot saved as {plot_filename}")
-
-    # Create a summary DataFrame
-    if pattern_details:
-        pattern_df = pd.DataFrame(pattern_details)
-        print("\nSummary of Detected Patterns:")
-        print(pattern_df)
-    else:
-        print("No patterns detected in the new data.")
-
+# Create a summary DataFrame
+if pattern_details:
+    pattern_df = pd.DataFrame(pattern_details)
+    print("\nSummary of Detected Patterns:")
+    print(pattern_df)
+else:
+    print("No patterns detected in the new data.")
