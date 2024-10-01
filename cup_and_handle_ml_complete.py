@@ -8,8 +8,16 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.utils import class_weight
 import sys
 import io
+
+class_weights = class_weight.compute_class_weight(
+    class_weight='balanced',
+    classes=np.unique(y_train),
+    y=y_train
+)
+class_weights = {i: weight for i, weight in enumerate(class_weights)}
 
 # Suppress warnings (optional)
 import warnings
@@ -177,11 +185,14 @@ def build_cnn_model(input_shape):
     model = models.Sequential()
     model.add(layers.Conv1D(32, kernel_size=3, activation='relu', input_shape=input_shape))
     model.add(layers.MaxPooling1D(pool_size=2))
+    model.add(layers.Dropout(0.3))  # Dropout layer
     model.add(layers.Conv1D(64, kernel_size=3, activation='relu'))
     model.add(layers.MaxPooling1D(pool_size=2))
+    model.add(layers.Dropout(0.3))  # Dropout layer
     model.add(layers.Flatten())
-    model.add(layers.Dense(50, activation='relu'))
-    model.add(layers.Dense(1, activation='sigmoid'))  # Binary classification
+    model.add(layers.Dense(50, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)))
+    model.add(layers.Dropout(0.5))  # Dropout layer
+    model.add(layers.Dense(1, activation='sigmoid'))
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     return model
 
@@ -201,12 +212,15 @@ def train_model(model, X_train, y_train, X_val, y_val):
     Returns:
     - history (History): Training history.
     """
+    early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
     history = model.fit(
         X_train, y_train,
-        epochs=20,
+        epochs=100,
         batch_size=32,
         validation_data=(X_val, y_val),
-        verbose=0
+        callbacks=[early_stop],
+        class_weight=class_weights,
+        verbose=1
     )
     return history
 
