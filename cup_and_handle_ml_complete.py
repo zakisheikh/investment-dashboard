@@ -231,7 +231,7 @@ def evaluate_model(model, X_test, y_test):
     # Restore stdout
     sys.stdout = original_stdout
     
-    y_pred_prob = model.predict(X_test, verbos=0)
+    y_pred_prob = model.predict(X_test, verbose=0)
     y_pred = (y_pred_prob > 0.5).astype("int32")
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred, zero_division=0))
