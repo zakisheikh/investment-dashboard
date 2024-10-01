@@ -242,6 +242,7 @@ if __name__ == '__main__':
         # Check if there are positive samples
         if labels.sum() == 0:
             print("No positive samples detected in the training data. Please adjust the pattern detection criteria or review the data.")
+            # Optionally, you can adjust detection criteria here or exit
             sys.exit(1)
         
         # Preprocess windows
