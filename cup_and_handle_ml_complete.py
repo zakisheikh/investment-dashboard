@@ -64,23 +64,34 @@ def preprocess_windows(windows):
     print(f"Preprocessed windows into shape: {X.shape}")
     return X
 
-# Function to detect cup and handle in a window
+# Enhanced Function to detect cup and handle in a window
 def detect_cup_and_handle_in_window(window, min_cup_length, max_cup_length, min_handle_length,
                                     max_handle_length, min_depth, max_depth, handle_max_retrace):
     # Implement actual cup and handle detection logic here
-    # This is a simplistic example and should be replaced with robust logic
+    # This is a more comprehensive example and should be further refined based on your criteria
     prices = window['Adj Close'].values
     try:
         min_index = np.argmin(prices)
         left = prices[:min_index]
         right = prices[min_index:]
+        
+        # Ensure window lengths meet minimum requirements
         if len(left) < min_cup_length or len(right) < min_handle_length:
             return 0
+        
+        # Calculate averages for cup depth
         left_avg = np.mean(left[-min_cup_length:])
         right_avg = np.mean(right[:min_handle_length])
         depth = (left_avg - right_avg) / left_avg
-        if min_depth <= depth <= max_depth:
-            # Further checks for handle retracement can be added here
+        
+        # Check if depth meets criteria
+        if not (min_depth <= depth <= max_depth):
+            return 0
+        
+        # Additional criteria: Handle retracement
+        handle_max = np.max(right[:min_handle_length])
+        retracement = (left_avg - handle_max) / left_avg
+        if retracement > handle_max_retrace:
             return 1
         else:
             return 0
@@ -145,7 +156,10 @@ def evaluate_model(model, X_test, y_test):
     print("\nClassification Report:")
     print(classification_report(y_test, predictions))
     print("Confusion Matrix:")
-    print(confusion_matrix(y_test, predictions))
+    try:
+        print(confusion_matrix(y_test, predictions))
+    except ValueError as ve:
+        print(f"Error generating confusion matrix: {ve}")
 
 # Function to predict on new data
 def predict_on_new_data(model, data, window_size, min_cup_length, max_cup_length,
@@ -153,6 +167,9 @@ def predict_on_new_data(model, data, window_size, min_cup_length, max_cup_length
                         handle_max_retrace):
     print("Predicting on new data...")
     windows = create_windows(data, window_size)
+    if not windows:
+        print("No windows created. Insufficient data for prediction.")
+        return np.array([]), windows
     X_new = preprocess_windows(windows)
     predictions_prob = model.predict(X_new, verbose=0)
     predictions = (predictions_prob > 0.5).astype("int32")
@@ -183,7 +200,8 @@ if __name__ == '__main__':
 
             # Calculate dynamic dates
             end_date = datetime.today()
-            required_days = window_size + max_cup_length + 100  # Additional days for training
+            # Fetch additional days to account for non-trading days
+            required_days = window_size * 2  # 120 days
             start_date = end_date - timedelta(days=required_days)
         elif analysis_type == 'long-term':
             interval = '1wk'  # Weekly data
@@ -198,7 +216,7 @@ if __name__ == '__main__':
 
             # Calculate dynamic dates
             end_date = datetime.today()
-            required_weeks = window_size + max_cup_length + 52  # Additional weeks for training
+            required_weeks = window_size * 2  # 130 weeks
             start_date = end_date - timedelta(weeks=required_weeks)
         else:
             raise ValueError('Invalid analysis type selected.')
@@ -213,13 +231,18 @@ if __name__ == '__main__':
             print(f"Not enough data fetched for ticker '{ticker}'. Please check the ticker symbol or date range and try again.")
             sys.exit(1)
         print(f"Fetched {len(data)} rows of data for {ticker} from {start_date_str} to {end_date_str}.")
-        
+
         # Create windows
         windows = create_windows(data, window_size)
         
         # Label windows
         labels = label_windows(windows, min_cup_length, max_cup_length, min_handle_length,
                                max_handle_length, min_depth, max_depth, handle_max_retrace)
+        
+        # Check if there are positive samples
+        if labels.sum() == 0:
+            print("No positive samples detected in the training data. Please adjust the pattern detection criteria or review the data.")
+            sys.exit(1)
         
         # Preprocess windows
         X = preprocess_windows(windows)
@@ -268,10 +291,13 @@ if __name__ == '__main__':
         # Calculate dynamic dates for new data
         if analysis_type == 'short-term':
             new_end_date = datetime.today()
-            new_start_date = new_end_date - timedelta(days=window_size)
+            # Fetch additional days to ensure enough trading days
+            new_required_days = window_size * 2  # 120 days
+            new_start_date = new_end_date - timedelta(days=new_required_days)
         elif analysis_type == 'long-term':
             new_end_date = datetime.today()
-            new_start_date = new_end_date - timedelta(weeks=window_size)
+            new_required_weeks = window_size * 2  # 130 weeks
+            new_start_date = new_end_date - timedelta(weeks=new_required_weeks)
         else:
             raise ValueError('Invalid analysis type selected.')
         
