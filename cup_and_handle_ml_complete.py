@@ -337,8 +337,8 @@ if __name__ == '__main__':
 
     # Predict on new data
     # For demonstration, we'll use recent data from the last year
-    new_start_date = '2023-01-01'
-    new_end_date = '2023-12-31'
+    new_start_date = '2023-09-30'
+    new_end_date = '2024-09-30'
     new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
     predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
