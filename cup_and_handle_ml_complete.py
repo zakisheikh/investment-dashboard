@@ -199,7 +199,8 @@ def train_model(model, X_train, y_train, X_val, y_val):
         X_train, y_train,
         epochs=20,
         batch_size=32,
-        validation_data=(X_val, y_val)
+        validation_data=(X_val, y_val),
+        verbose=0
     )
     return history
 
