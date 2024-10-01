@@ -218,6 +218,17 @@ def evaluate_model(model, X_test, y_test):
     Returns:
     - None
     """
+
+    # Suppress stdout temporarily
+    original_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+
+    # Perform prediction
+    y_pred_prob = model.predict(X_test)
+
+    # Restore stdout
+    sys.stdout = original_stdout
+    
     y_pred_prob = model.predict(X_test)
     y_pred = (y_pred_prob > 0.5).astype("int32")
     print("\nClassification Report:")
