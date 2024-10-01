@@ -254,7 +254,16 @@ def predict_on_new_data(model, data, window_size):
     """
     windows = create_windows(data, window_size)
     X_new = preprocess_windows(windows)
-    predictions_prob = model.predict(X_new)
+
+    # Suppress stdout temporarily
+    original_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    
+    predictions_prob = model.predict(X_new, verbose=0)
+
+        # Restore stdout
+    sys.stdout = original_stdout
+    
     predictions = (predictions_prob > 0.5).astype("int32")
     return predictions, windows
 
