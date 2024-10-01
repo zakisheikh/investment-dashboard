@@ -271,7 +271,7 @@ def predict_on_new_data(model, data, window_size):
 
 if __name__ == '__main__':
     # Parameters
-    ticker = 'AAPL'
+    ticker = 'NVDA'
     start_date = '2010-01-01'
     end_date = '2023-12-31'
     window_size = 60  # Adjust based on expected pattern length
