@@ -10,6 +10,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 import sys
 import io
+from datetime import datetime, timedelta
+
 
 # Suppress warnings (optional)
 import warnings
@@ -267,32 +269,80 @@ def predict_on_new_data(model, data, window_size):
     predictions = (predictions_prob > 0.5).astype("int32")
     return predictions, windows
 
+def get_analysis_type():
+    while True:
+        analysis_type = input('Select analysis type ("short-term" or "long-term"): ').strip().lower()
+        if analysis_type in ['short-term', 'long-term']:
+            return analysis_type
+        else:
+            print('Invalid input. Please enter "short-term" or "long-term".')
+
+def get_ticker_symbol():
+    while True:
+        ticker = input('Enter the ticker symbol (e.g., "AAPL", "MSFT"): ').strip().upper()
+        if ticker:
+            return ticker
+        else:
+            print('Invalid input. Please enter a valid ticker symbol.')
+
 # Step 8: Main Execution
 
 if __name__ == '__main__':
-    # Parameters
-    ticker = 'NVDA'
-    start_date = '2010-01-01'
-    end_date = '2023-12-31'
-    window_size = 60  # Adjust based on expected pattern length
+    # Get analysis type from user
+    analysis_type = get_analysis_type()
+
+    # Get ticker symbol from user
+    ticker = get_ticker_symbol()
+
+    # Set parameters based on analysis type
+    if analysis_type == 'short-term':
+        interval = '1d'  # Daily data
+        window_size = 60
+        min_cup_length = 10
+        max_cup_length = 60
+        min_handle_length = 5
+        max_handle_length = 20
+        min_depth = 0.1
+        max_depth = 0.5
+        handle_max_retrace = 0.5
+
+        # Calculate dynamic dates
+        end_date = datetime.today()
+        start_date = end_date - timedelta(days=365)  # Fetch past 1 year of data
+    elif analysis_type == 'long-term':
+        interval = '1wk'  # Weekly data
+        window_size = 65
+        min_cup_length = 7
+        max_cup_length = 65
+        min_handle_length = 1
+        max_handle_length = 4
+        min_depth = 0.12
+        max_depth = 0.33
+        handle_max_retrace = 0.12
+
+        # Calculate dynamic dates
+        end_date = datetime.today()
+        start_date = end_date - timedelta(weeks=130)  # Fetch past 2.5 years of data
+    else:
+        raise ValueError('Invalid analysis type selected.')
+
+    # Convert dates to strings in 'YYYY-MM-DD' format
+    start_date_str = start_date.strftime('%Y-%m-%d')
+    end_date_str = end_date.strftime('%Y-%m-%d')
 
     # Fetch data
-    data = fetch_stock_data(ticker, start_date, end_date)
-    print(f"Fetched {len(data)} rows of data for {ticker}.")
-
-    # Create windows
-    windows = create_windows(data, window_size)
-    print(f"Created {len(windows)} windows of size {window_size}.")
+    data = fetch_stock_data(ticker, start_date_str, end_date_str, interval)
+    if data.empty:
+        print(f"No data fetched for ticker '{ticker}'. Please check the ticker symbol and try again.")
+        sys.exit(1)
+    print(f"Fetched {len(data)} rows of data for {ticker} from {start_date_str} to {end_date_str}.")
 
     # Label windows
-    labels = label_windows(windows)
+    labels = label_windows(windows, min_cup_length, max_cup_length, min_handle_length,
+                           max_handle_length, min_depth, max_depth, handle_max_retrace)
     positive_samples = labels.sum()
     negative_samples = len(labels) - positive_samples
     print(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
-
-    # Handle class imbalance if necessary
-    # For example, you can undersample the majority class or use class weights
-    # For simplicity, we'll proceed without addressing imbalance in this example
 
     # Preprocess windows
     X = preprocess_windows(windows)
@@ -332,39 +382,69 @@ if __name__ == '__main__':
     plt.show()
 
     # Save the model
-    model.save('cup_and_handle_cnn_model.h5')
-    print("Model saved as 'cup_and_handle_cnn_model.h5'.")
+    model_filename = f'cup_and_handle_cnn_model_{ticker}.keras'
+    model.save(model_filename)
+    print(f"Model saved as '{model_filename}'.")
 
     # Predict on new data
-    # For demonstration, we'll use recent data from the last year
     new_start_date = '2023-09-30'
-    new_end_date = '2024-09-30'
-    new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
-    predictions, new_windows = predict_on_new_data(model, new_data, window_size)
+    new_end_date = '2023-12-31'
+    new_data = fetch_stock_data(ticker, new_start_date, new_end_date, interval)
+    if new_data.empty:
+        print(f"No new data fetched for ticker '{ticker}'. Please check the ticker symbol and try again.")
+        sys.exit(1)
+    predictions, new_windows = predict_on_new_data(model, new_data, window_size, min_cup_length,
+                                                   max_cup_length, min_handle_length, max_handle_length,
+                                                   min_depth, max_depth, handle_max_retrace)
 
-# Find windows where pattern is predicted
-pattern_indices = np.where(predictions == 1)[0]
-print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
+    # Find windows where pattern is predicted
+    pattern_indices = np.where(predictions == 1)[0]
+    print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
 
-# Enhance the output for detected patterns
-for idx in pattern_indices:
-    window = new_windows[idx]
-    dates = window.index
-    start_date = dates[0].strftime('%Y-%m-%d')
-    end_date = dates[-1].strftime('%Y-%m-%d')
-    prices = window['Adj Close']
-    min_price = prices.min()
-    max_price = prices.max()
+    # Initialize list to store pattern details
+    pattern_details = []
 
-    print(f"Pattern detected from {start_date} to {end_date} (Index {idx})")
-    print(f"Price range: ${min_price:.2f} - ${max_price:.2f}")
+    for idx in pattern_indices:
+        window = new_windows[idx]
+        dates = window.index
+        start_date = dates[0].strftime('%Y-%m-%d')
+        end_date = dates[-1].strftime('%Y-%m-%d')
+        prices = window['Adj Close']
+        min_price = prices.min()
+        max_price = prices.max()
 
-    # Plot the detected pattern
-    plt.figure(figsize=(10, 5))
-    plt.plot(dates, prices)
-    plt.title(f"Cup and Handle Pattern Detected from {start_date} to {end_date}")
-    plt.xlabel('Date')
-    plt.ylabel('Adjusted Close Price')
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
+        print(f"\nPattern detected in {ticker} from {start_date} to {end_date} (Index {idx})")
+        print(f"Price range: ${min_price:.2f} - ${max_price:.2f}")
+
+        # Append details to list
+        pattern_details.append({
+            'Ticker': ticker,
+            'Start Date': start_date,
+            'End Date': end_date,
+            'Min Price': min_price,
+            'Max Price': max_price
+        })
+
+        # Plot the detected pattern
+        plt.figure(figsize=(10, 5))
+        plt.plot(dates, prices)
+        plt.title(f"Cup and Handle Pattern Detected in {ticker}\n{start_date} to {end_date}")
+        plt.xlabel('Date')
+        plt.ylabel('Adjusted Close Price')
+        plt.xticks(rotation=45)
+        plt.tight_layout()
+        plt.show()
+
+        # Optionally, save the plot
+        # plot_filename = f"{ticker}_pattern_{idx}_{start_date}_to_{end_date}.png"
+        # plt.savefig(plot_filename)
+        # print(f"Plot saved as {plot_filename}")
+
+    # Create a summary DataFrame
+    if pattern_details:
+        pattern_df = pd.DataFrame(pattern_details)
+        print("\nSummary of Detected Patterns:")
+        print(pattern_df)
+    else:
+        print("No patterns detected in the new data.")
+
