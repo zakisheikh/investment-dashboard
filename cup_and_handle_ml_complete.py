@@ -342,19 +342,29 @@ if __name__ == '__main__':
     new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
     predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
-    # Find windows where pattern is predicted
-    pattern_indices = np.where(predictions == 1)[0]
-    print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
+# Find windows where pattern is predicted
+pattern_indices = np.where(predictions == 1)[0]
+print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
 
-    # Plot detected patterns
-    for idx in pattern_indices:
-        window = new_windows[idx]
-        dates = window.index
-        prices = window['Adj Close']
+# Enhance the output for detected patterns
+for idx in pattern_indices:
+    window = new_windows[idx]
+    dates = window.index
+    start_date = dates[0].strftime('%Y-%m-%d')
+    end_date = dates[-1].strftime('%Y-%m-%d')
+    prices = window['Adj Close']
+    min_price = prices.min()
+    max_price = prices.max()
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(dates, prices)
-        plt.title(f"Detected Cup and Handle Pattern at index {idx}")
-        plt.xlabel('Date')
-        plt.ylabel('Adjusted Close Price')
-        plt.show()
+    print(f"Pattern detected from {start_date} to {end_date} (Index {idx})")
+    print(f"Price range: ${min_price:.2f} - ${max_price:.2f}")
+
+    # Plot the detected pattern
+    plt.figure(figsize=(10, 5))
+    plt.plot(dates, prices)
+    plt.title(f"Cup and Handle Pattern Detected from {start_date} to {end_date}")
+    plt.xlabel('Date')
+    plt.ylabel('Adjusted Close Price')
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.show()
