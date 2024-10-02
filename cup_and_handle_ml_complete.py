@@ -12,6 +12,7 @@ import sys
 import io
 import mplfinance as mpf
 from datetime import datetime, timedelta
+import os
 
 
 # Suppress warnings (optional)
@@ -352,6 +353,11 @@ if __name__ == '__main__':
     new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
     predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
+    # Create a folder with the format 'TICKER_MM-DD-YYYY_ANALYSIS'
+    folder_name = f"{ticker}_{today.strftime('%m-%d-%Y')}_ANALYSIS"
+    if not os.path.exists(folder_name):
+        os.makedirs(folder_name)
+    
     # Find windows where pattern is predicted
     pattern_indices = np.where(predictions == 1)[0]
     print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
@@ -373,10 +379,9 @@ for i, idx in enumerate(pattern_indices, start=1):
 
     # Define the filename for the last pattern's plot
     if i == len(pattern_indices):
-        plot_filename = 'latest_cup_handle_pattern.png'
-        print("The next one is the last detected cup and handle pattern.")
+        plot_filename = os.path.join(folder_name, 'latest_cup_handle_pattern.png')
     else:
-        plot_filename = f'cup_handle_pattern_{i}.png'  # e.g., pattern_1.png, pattern_2.png, etc.
+        plot_filename = os.path.join(folder_name, f'cup_handle_pattern_{i}.png')  # e.g., pattern_1.png, pattern_2.png, etc.
     
     # Plot the candlestick chart
     mpf.plot(
@@ -388,5 +393,5 @@ for i, idx in enumerate(pattern_indices, start=1):
     )
 
 # After the plotting loop
-print("\nAll detected cup and handle patterns have been reviewed.")
+print("\nAll detected cup and handle patterns have been saved.")
 input("Press Enter to exit the program.")
