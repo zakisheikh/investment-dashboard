@@ -69,7 +69,7 @@ def get_user_parameters():
 def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio):
     """
     Perform a backtest of the strategy using both intraday and daily data.
-    Fine-tuned strategy with stricter RSI thresholds, dynamic stop-loss, and adjusted profit target.
+    Updated strategy with enhanced hold messaging and dynamic profit target as a minimum.
     Generates a chart showing buy/sell signals with arrows.
     """
     balance = 10000  # Initial capital
@@ -93,12 +93,13 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
         sma_short = intraday_data['SMA50'].iloc[i]  # Short-term moving average (50 periods)
         sma_long = intraday_data['SMA200'].iloc[i]  # Long-term moving average (200 periods)
 
+        # Stop-loss and profit target (minimum target, allow trend to continue)
         stop_loss = latest_close_intraday * (1 - (1 / risk_reward_ratio))  # Calculate stop-loss based on risk-reward ratio
-        target_price = latest_close_intraday * (1 + profit_target)  # Calculate target price based on profit target
+        target_price = latest_close_intraday * (1 + profit_target)  # Minimum target price, but trend can continue
 
         # Buy Condition: RSI < 30 (oversold) + Moving Average Crossover (SMA50 > SMA200)
         if latest_rsi_intraday < 30 and sma_short > sma_long and position == 0:
-            # Buy the position
+            # Buy the position based on both RSI and moving average confirmation
             position = balance / latest_close_intraday  # Number of shares we can buy
             balance = 0  # All money is invested
             trade_log.append(f"Buy {position:.2f} shares at {latest_close_intraday:.2f} on {intraday_data.index[i]}")
@@ -123,13 +124,13 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     for log in trade_log:
         print(log)
 
-    # Suggest a hold reason: Near Buy or Near Sell based on RSI
+    # Enhanced hold messaging
     if 30 < latest_rsi_intraday < 50:
-        print(f"Hold (Near Buy): Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
+        print(f"Holding: Possible Buy Signal Forming (RSI near 30) - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
     elif 50 < latest_rsi_intraday < 70:
-        print(f"Hold (Near Sell): Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
+        print(f"Holding: Possible Sell Signal Forming (RSI near 70) - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
     else:
-        print(f"Hold: Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
+        print(f"Holding: Market in Neutral State - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
 
     # Generate a chart with buy/sell signals
     plot_signals(intraday_data, buy_signals, sell_signals)
