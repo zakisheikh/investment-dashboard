@@ -64,12 +64,17 @@ def label_windows(windows):
 
     Returns:
     - labels (ndarray): Array of labels (1 for pattern, 0 for no pattern).
+    - cup_points_list (list): List of cup points dictionaries for detected patterns.
     """
     labels = []
+    cup_points_list = []
+    
     for window in windows:
-        label = detect_cup_and_handle_in_window(window)
+        label, cup_points = detect_cup_and_handle_in_window(window)
         labels.append(label)
-    return np.array(labels)
+        cup_points_list.append(cup_points)
+        
+    return np.array(labels), cup_points_list
 
 def detect_cup_and_handle_in_window(window):
     """
@@ -412,10 +417,10 @@ for i, idx in enumerate(pattern_indices, start=1):
     dates = window.index
     date_range = f"{dates[0].strftime('%Y-%m-%d')} to {dates[-1].strftime('%Y-%m-%d')}"
 
-    label, cup_points = detect_cup_and_handle_in_window(window)
+    # Get the corresponding cup points
+    cup_points = cup_points_list[idx]
 
-    if label == 1:
-        plot_cup_and_handle_pattern(window, cup_points, i)
+    plot_cup_and_handle_pattern(window, cup_points, i)
     
     # Calculate the price range
     price_min = window['Low'].min()
