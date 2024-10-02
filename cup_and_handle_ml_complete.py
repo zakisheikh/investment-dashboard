@@ -74,12 +74,7 @@ def label_windows(windows):
 def detect_cup_and_handle_in_window(window):
     """
     Detects a cup and handle pattern in a window using heuristic rules.
-
-    Parameters:
-    - window (DataFrame): Window of stock data.
-
-    Returns:
-    - label (int): 1 if pattern is detected, 0 otherwise.
+    Returns key points for visualization if pattern is found.
     """
     close_prices = window['Close'].values
     volume = window['Volume'].values
@@ -95,6 +90,7 @@ def detect_cup_and_handle_in_window(window):
 
     # Step 1: Identify the cup
     cup_found = False
+    cup_points = None  # Store key points if cup is found
     for i in range(min_cup_length, min(max_cup_length, len(close_prices) - min_handle_length)):
         left_peak = close_prices[0]
         right_peak = close_prices[i]
@@ -129,13 +125,67 @@ def detect_cup_and_handle_in_window(window):
 
             # If all conditions are met, pattern is found
             cup_found = True
+            cup_points = {
+                'left_peak': left_peak,
+                'right_peak': right_peak,
+                'cup_bottom': cup_bottom,
+                'handle_start': i,
+                'handle_end': j,
+                'bottom_index': bottom_index
+            }
             break
 
         if cup_found:
             break
 
     label = 1 if cup_found else 0
-    return label
+    return label, cup_points
+
+# New function to plot cup and handle on the detected pattern
+
+def plot_cup_and_handle_pattern(window, cup_points, pattern_num):
+    """
+    Plot the detected cup and handle pattern on the stock data.
+    """
+    close_prices = window['Close'].values
+    dates = window.index
+
+    # Plot the stock prices
+    plt.figure(figsize=(10, 6))
+    plt.plot(dates, close_prices, label='Stock Price', color='blue')
+
+    # If cup and handle points are found, plot the pattern
+    if cup_points:
+        left_peak_idx = 0
+        right_peak_idx = cup_points['handle_start']
+        bottom_idx = cup_points['bottom_index']
+        handle_start_idx = cup_points['handle_start']
+        handle_end_idx = cup_points['handle_end']
+
+        # Plot the cup curve
+        plt.plot(
+            dates[left_peak_idx:handle_start_idx+1],
+            close_prices[left_peak_idx:handle_start_idx+1],
+            label='Cup',
+            color='red'
+        )
+
+        # Plot the handle
+        plt.plot(
+            dates[handle_start_idx:handle_end_idx+1],
+            close_prices[handle_start_idx:handle_end_idx+1],
+            label='Handle',
+            color='green'
+        )
+
+        # Mark the key points: left peak, right peak, bottom
+        plt.scatter(dates[left_peak_idx], close_prices[left_peak_idx], color='orange', label='Left Peak')
+        plt.scatter(dates[right_peak_idx], close_prices[right_peak_idx], color='orange', label='Right Peak')
+        plt.scatter(dates[bottom_idx], close_prices[bottom_idx], color='purple', label='Cup Bottom')
+
+    plt.title(f"Cup and Handle Pattern {pattern_num}")
+    plt.legend()
+    plt.show()
 
 # Step 3: Feature Engineering
 
@@ -361,6 +411,11 @@ for i, idx in enumerate(pattern_indices, start=1):
     window = new_windows[idx]
     dates = window.index
     date_range = f"{dates[0].strftime('%Y-%m-%d')} to {dates[-1].strftime('%Y-%m-%d')}"
+
+    label, cup_points = detect_cup_and_handle_in_window(window)
+
+    if label == 1:
+        plot_cup_and_handle_pattern(window, cup_points, i)
     
     # Calculate the price range
     price_min = window['Low'].min()
@@ -383,7 +438,7 @@ for i, idx in enumerate(pattern_indices, start=1):
         candlestick_data, 
         type='candle', 
         title=f"Cup and Handle Pattern {i}/{len(pattern_indices)}\n{date_range}\n{price_range}", 
-        style='yahoo'
+        style='yahoo',
         savefig=plot_filename  # Saves the plot as 'pattern_i.png'
     )
 
