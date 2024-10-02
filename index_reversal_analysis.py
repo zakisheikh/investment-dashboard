@@ -3,15 +3,14 @@ import pandas as pd
 import talib
 import numpy as np
 import plotly.graph_objects as go
-import matplotlib.pyplot as plt
 
 # Step 1: Download Historical Data for multiple timeframes (Intraday and Daily)
 def download_data(ticker):
     """
     Download both intraday and daily historical market data for a given ticker.
     """
-    # Fetch intraday data (5-minute intervals, 5 days)
-    intraday_data = yf.Ticker(ticker).history(period='5d', interval='5m')
+    # Fetch intraday data (5-minute intervals, 1 month)
+    intraday_data = yf.Ticker(ticker).history(period='1mo', interval='5m')
     
     # Fetch daily data (1 year)
     daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
@@ -62,15 +61,25 @@ def detect_trend(data):
 def calculate_position(balance, entry_price, stop_loss, risk_percentage=1):
     """
     Calculate the position size based on the account balance, risk per trade, and stop-loss level.
+    Constrain the position size to avoid unrealistic balances.
     """
-    risk_amount = balance * (risk_percentage / 100)  # Risk per trade (e.g., 1% of balance)
+    # Calculate the risk amount (e.g., risking 1% of the account balance)
+    risk_amount = balance * (risk_percentage / 100)
+    
+    # Calculate the stop-loss distance
     stop_loss_distance = abs(entry_price - stop_loss)
     
-    if stop_loss_distance == 0:
-        stop_loss_distance = entry_price * 0.01  # Avoid division by zero (1% default)
+    # If the stop-loss distance is too small, set it to a default value (1% of the entry price)
+    if stop_loss_distance < (entry_price * 0.01):
+        stop_loss_distance = entry_price * 0.01  # 1% default stop-loss distance
+
+    # Calculate position size, and ensure it doesn't exceed the balance
+    position_size = min(risk_amount / stop_loss_distance, balance / entry_price)
     
-    position_size = risk_amount / stop_loss_distance
-    position_size = min(position_size, balance / entry_price)  # Ensure we don't over-leverage
+    # Add a minimum position size threshold to avoid extremely small trades
+    if position_size < 0.01:  # Assume we don't want to trade less than 0.01 shares
+        position_size = 0
+    
     return position_size
 
 # Step 5: Backtesting the Strategy
@@ -99,20 +108,16 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1):
 
         # Buy condition for range markets
         if regime == "range" and latest_rsi < 40 and latest_close <= lower_band:
-            # Looser condition for buying in range-bound markets
             position_size = calculate_position(balance, latest_close, stop_loss_buy, risk_percentage)
             if position_size > 0:
                 balance -= position_size * latest_close
                 position = position_size  # Buy the position
-                trade_log.append(f"Buy {position_size} shares at {latest_close} on {data.index[i]}")
-                print(f"Buying {position_size} shares at {latest_close} on {data.index[i]}")
+                trade_log.append(f"Buy {position_size:.2f} shares at {latest_close:.2f} on {data.index[i]}")
         
         # Sell condition for range markets
         elif regime == "range" and latest_rsi > 60 and latest_close >= upper_band and position > 0:
-            # Looser condition for selling in range-bound markets
             balance += position * latest_close
-            trade_log.append(f"Sell {position} shares at {latest_close} on {data.index[i]}")
-            print(f"Selling {position} shares at {latest_close} on {data.index[i]}")
+            trade_log.append(f"Sell {position:.2f} shares at {latest_close:.2f} on {data.index[i]}")
             position = 0  # Reset position after sell
 
         # Track trades
