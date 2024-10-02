@@ -374,8 +374,7 @@ for i, idx in enumerate(pattern_indices, start=1):
     # Define the filename for the last pattern's plot
     if i == len(pattern_indices):
         plot_filename = 'latest_cup_handle_pattern.png'
-        print("This was the last detected cup and handle pattern.")
-        input("Press Enter to exit the program.")
+        print("The next one is the last detected cup and handle pattern.")
     else:
         plot_filename = f'cup_handle_pattern_{i}.png'  # e.g., pattern_1.png, pattern_2.png, etc.
     
@@ -389,3 +388,4 @@ for i, idx in enumerate(pattern_indices, start=1):
 
 # After the plotting loop
 print("\nAll detected cup and handle patterns have been reviewed.")
+input("Press Enter to exit the program.")
