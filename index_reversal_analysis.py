@@ -7,14 +7,24 @@ import numpy as np
 def download_data(ticker, interval='5m'):
     """
     Download both intraday and daily historical market data for a given ticker.
-    Limit intraday data based on Yahoo Finance's API restrictions.
+    Handle the limitations of Yahoo Finance's API for different intraday intervals.
     """
-    # Fetch intraday data (handle the limitation of 1m data)
     if interval == '1m':
-        intraday_data = yf.Ticker(ticker).history(period='7d', interval=interval)  # Only 7 days for 1-minute intervals
+        # 1-minute interval allows only 7 days
+        intraday_data = yf.Ticker(ticker).history(period='5d', interval=interval)
+    elif interval in ['2m', '5m']:
+        # 2-minute and 5-minute intervals allow 30 days
+        intraday_data = yf.Ticker(ticker).history(period='30d', interval=interval)
+    elif interval in ['15m', '30m']:
+        # 15-minute and 30-minute intervals allow 90 days
+        intraday_data = yf.Ticker(ticker).history(period='90d', interval=interval)
+    elif interval in ['60m', '1h']:
+        # 60-minute and 1-hour intervals allow 180 days
+        intraday_data = yf.Ticker(ticker).history(period='180d', interval=interval)
     else:
-        intraday_data = yf.Ticker(ticker).history(period='21d', interval=interval)  # 21 days for larger intervals
-    
+        print(f"Interval '{interval}' is not supported. Please choose a valid interval.")
+        return None, None
+
     # Fetch daily data (1 year)
     daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
     
@@ -141,16 +151,19 @@ if __name__ == "__main__":
     # Download historical data for both intraday and daily timeframes
     intraday_data, daily_data = download_data(ticker, interval)
     
-    # Calculate indicators for both timeframes
-    intraday_data = calculate_indicators(intraday_data)
-    daily_data = calculate_indicators(daily_data)
+    if intraday_data is None or daily_data is None:
+        print("No valid data found for the specified ticker or interval.")
+    else:
+        # Calculate indicators for both timeframes
+        intraday_data = calculate_indicators(intraday_data)
+        daily_data = calculate_indicators(daily_data)
 
-    # Get user parameters (profit target and risk-reward ratio)
-    profit_target, risk_reward_ratio = get_user_parameters()
+        # Get user parameters (profit target and risk-reward ratio)
+        profit_target, risk_reward_ratio = get_user_parameters()
 
-    # Run backtest
-    final_balance, trade_log = backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio)
+        # Run backtest
+        final_balance, trade_log = backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio)
 
-    # Suggest the next trade based on current indicators
-    next_trade = suggest_next_trade(intraday_data, daily_data)
-    print(next_trade)
+        # Suggest the next trade based on current indicators
+        next_trade = suggest_next_trade(intraday_data, daily_data)
+        print(next_trade)
