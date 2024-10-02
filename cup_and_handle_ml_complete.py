@@ -348,7 +348,7 @@ if __name__ == '__main__':
     print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
 
     # Plot detected patterns
-for idx in pattern_indices:
+for i, idx in enumerate(pattern_indices, start=1):
     window = new_windows[idx]
     dates = window.index
     date_range = f"{dates[0].strftime('%Y-%m-%d')} to {dates[-1].strftime('%Y-%m-%d')}"
@@ -366,9 +366,17 @@ for idx in pattern_indices:
     mpf.plot(
         candlestick_data, 
         type='candle', 
-        title=f"Cup and Handle Pattern\n{date_range}\n{price_range}", 
+        title=f"Cup and Handle Pattern {i}/{len(pattern_indices)}\n{date_range}\n{price_range}", 
         style='yahoo'
     )
     
-    # Prompt the user to proceed
-    input("Press Enter after closing the plot to view the next pattern...")
+    # Conditional prompt
+    if i < len(pattern_indices):
+        input("Press Enter after closing the plot to view the next pattern...")
+    else:
+        print("This was the last detected cup and handle pattern.")
+        input("Press Enter to exit the program.")
+
+
+# After the plotting loop
+print("\nAll detected cup and handle patterns have been reviewed.")
