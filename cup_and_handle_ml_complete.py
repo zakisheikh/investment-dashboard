@@ -11,6 +11,8 @@ from sklearn.metrics import classification_report, confusion_matrix
 import sys
 import io
 import mplfinance as mpf
+from datetime import datetime, timedelta
+
 
 # Suppress warnings (optional)
 import warnings
@@ -338,8 +340,15 @@ if __name__ == '__main__':
 
     # Predict on new data
     # For demonstration, we'll use recent data from the last year
-    new_start_date = '2023-09-30'
-    new_end_date = '2024-09-30'
+    # Get today's date
+    today = datetime.today()
+
+    # Calculate the date one year ago from today
+    one_year_ago = today - timedelta(days=365)
+
+    # Format the dates as strings in 'YYYY-MM-DD' format
+    new_start_date = one_year_ago.strftime('%Y-%m-%d')
+    new_end_date = today.strftime('%Y-%m-%d')
     new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
     predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
@@ -371,7 +380,7 @@ for i, idx in enumerate(pattern_indices, start=1):
     )
     
     # Conditional prompt
-    if i < len(pattern_indices):
+    if i < len(pattern_indices - 1):
         input("Press Enter after closing the plot to view the next pattern...")
     else:
         print("This was the last detected cup and handle pattern.")
