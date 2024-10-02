@@ -148,12 +148,17 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
 
             trade_log.append(f"Sell {position:.2f} shares at {sell_price:.2f} on {data.index[i]}")
             
+            # Debugging output to track each trade's profit or loss
+            print(f"Trade executed: Buy price = {stop_loss_buy}, Sell price = {sell_price}, Profit = {profit}")
+            
             # Track win/loss and update gross profits and losses
             if profit > 0:
                 gross_profit += profit
                 wins += 1
+                print(f"Win recorded: Total Wins = {wins}, Gross Profit = {gross_profit}")
             else:
                 gross_loss += abs(profit)
+                print(f"Loss recorded: Gross Loss = {gross_loss}")
             
             position = 0  # Reset position after sell
 
@@ -171,6 +176,10 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
     sharpe_ratio = calculate_sharpe_ratio(returns) if len(returns) > 0 else 0
     max_drawdown = calculate_max_drawdown(balance_history)
     profit_factor = calculate_profit_factor(gross_profit, gross_loss)
+    
+    # Debugging output for final results
+    print(f"Final Balance: ${final_balance:.2f}, Wins: {wins}, Gross Profit: {gross_profit}, Gross Loss: {gross_loss}")
+    print(f"Sharpe Ratio: {sharpe_ratio}, Max Drawdown: {max_drawdown}, Profit Factor: {profit_factor}")
     
     return final_balance, trade_log, wins, num_trades, sharpe_ratio, max_drawdown, profit_factor
     
