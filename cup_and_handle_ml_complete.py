@@ -271,7 +271,7 @@ def predict_on_new_data(model, data, window_size):
 
 if __name__ == '__main__':
     # Parameters
-    ticker = 'NVDA'
+    ticker = input("Enter the stock ticker symbol (e.g., AAPL, NVDA): ")
     start_date = '2010-01-01'
     end_date = '2023-12-31'
     window_size = 60  # Adjust based on expected pattern length
@@ -351,10 +351,11 @@ if __name__ == '__main__':
         window = new_windows[idx]
         dates = window.index
         prices = window['Adj Close']
+        date_range = f"{dates[0].strftime('%Y-%m-%d')} to {dates[-1].strftime('%Y-%m-%d')}"
 
-        plt.figure(figsize=(10, 5))
-        plt.plot(dates, prices)
-        plt.title(f"Detected Cup and Handle Pattern at index {idx}")
-        plt.xlabel('Date')
-        plt.ylabel('Adjusted Close Price')
-        plt.show()
+    # Prepare the data for candlestick chart
+    candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
+    candlestick_data.index = dates
+
+    # Plot the candlestick chart
+    mpf.plot(candlestick_data, type='candle', title=f"Detected Cup and Handle Pattern from {date_range}", style='charles', volume=True)
