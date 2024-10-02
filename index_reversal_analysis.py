@@ -155,4 +155,53 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
     final_balance = balance + (position * data['Close'].iloc[-1]) if position > 0 else balance
     
     # Sharpe Ratio, Profit Factor
-    sharpe_ratio = (gross_profit - gross_loss) / max
+    sharpe_ratio = (gross_profit - gross_loss) / max_drawdown if max_drawdown > 0 else 0
+    profit_factor = gross_profit / abs(gross_loss) if gross_loss != 0 else math.inf
+    
+    return final_balance, trade_log, wins, num_trades, sharpe_ratio, max_drawdown, profit_factor
+
+# Step 7: Plot and Show Results
+def plot_reversals(data, ticker):
+    """
+    Visualize the price movements, indicators, and backtested trades.
+    """
+    fig = go.Figure()
+
+    # Plot Closing Price
+    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name=f'{ticker} Close Price', line=dict(color='blue')))
+    
+    # Plot Bollinger Bands
+    fig.add_trace(go.Scatter(x=data.index, y=data['Upper_Band'], mode='lines', name='Upper Bollinger Band', line=dict(color='orange', dash='dash')))
+    fig.add_trace(go.Scatter(x=data.index, y=data['Lower_Band'], mode='lines', name='Lower Bollinger Band', line=dict(color='orange', dash='dash')))
+    
+    # Plot Moving Averages
+    fig.add_trace(go.Scatter(x=data.index, y=data['SMA50'], mode='lines', name='50-day SMA', line=dict(color='purple')))
+    fig.add_trace(go.Scatter(x=data.index, y=data['EMA20'], mode='lines', name='20-day EMA', line=dict(color='green')))
+    
+    fig.update_layout(title=f'{ticker} Price with Technical Indicators', xaxis_title='Date', yaxis_title='Price', hovermode='x unified', showlegend=True)
+    fig.show()
+
+# Example usage
+ticker = "SPY"  # You can replace this with any stock or index symbol
+intraday_data, daily_data = download_data(ticker)
+
+# Calculate indicators for both timeframes
+intraday_data = calculate_indicators(intraday_data)
+daily_data = calculate_indicators(daily_data)
+
+# Detect the market regime using ADX
+market_regime = detect_trend(daily_data)
+print(f"Market Regime: {market_regime}")
+
+# Backtest the strategy based on the market regime
+final_balance, trades, wins, total_trades, sharpe_ratio, max_drawdown, profit_factor = backtest_strategy(daily_data, market_regime)
+
+# Show the backtesting results
+print(f"Final Balance: ${final_balance:.2f}")
+print(f"Number of Trades: {total_trades}, Wins: {wins}")
+print(f"Sharpe Ratio: {sharpe_ratio:.2f}, Max Drawdown: {max_drawdown:.2f}, Profit Factor: {profit_factor:.2f}")
+for trade in trades:
+    print(trade)
+
+# Plot the results
+plot_reversals(daily_data, ticker)
