@@ -2,22 +2,24 @@ import yfinance as yf
 import pandas as pd
 import talib
 import numpy as np
-import plotly.graph_objects as go
-import math
 
-# Step 1: Download Historical Data for multiple timeframes (Intraday and Daily)
-def download_data(ticker):
+# Step 1: Download Historical Data for both intraday and daily timeframes
+def download_data(ticker, interval='5m'):
     """
     Download both intraday and daily historical market data for a given ticker.
     """
-    intraday_data = yf.Ticker(ticker).history(period='1mo', interval='5m')
+    # Fetch intraday data
+    intraday_data = yf.Ticker(ticker).history(period='21d', interval=interval)  # Limited to 21 days for smaller intervals
+    
+    # Fetch daily data (1 year)
     daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
+    
     return intraday_data, daily_data
 
-# Step 2: Calculate Technical Indicators
+# Step 2: Calculate Technical Indicators for both timeframes
 def calculate_indicators(data):
     """
-    Calculate key technical indicators such as RSI, MACD, Bollinger Bands, ADX, and Stochastic Oscillator.
+    Calculate key technical indicators such as RSI, MACD, Bollinger Bands, and Moving Averages.
     """
     # RSI
     data['RSI'] = talib.RSI(data['Close'], timeperiod=14)
@@ -28,203 +30,111 @@ def calculate_indicators(data):
     # Bollinger Bands
     data['Upper_Band'], data['Middle_Band'], data['Lower_Band'] = talib.BBANDS(data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
     
-    # Stochastic Oscillator
-    data['SlowK'], data['SlowD'] = talib.STOCH(data['High'], data['Low'], data['Close'], fastk_period=14, slowk_period=3, slowd_period=3)
-    
-    # ADX (Average Directional Index)
-    data['ADX'] = talib.ADX(data['High'], data['Low'], data['Close'], timeperiod=14)
-    
-    # On-Balance Volume (OBV)
-    data['OBV'] = talib.OBV(data['Close'], data['Volume'])
-    
     # Moving Averages
     data['SMA50'] = talib.SMA(data['Close'], timeperiod=50)
-    data['EMA20'] = talib.EMA(data['Close'], timeperiod=20)
     
     return data
 
-# Step 3: Trend Detection and Confirmation using ADX
-def detect_trend(data):
+# Step 3: User-Defined Parameters (Profit Target, Risk-Reward Ratio)
+def get_user_parameters():
     """
-    Detect if the market is trending using ADX. Returns 'trend' if ADX > 25, else 'range' (mean-reverting market).
+    Get user-defined parameters like profit target and risk-reward ratio.
     """
-    latest_adx = data['ADX'].iloc[-1]
-    if latest_adx > 25:
-        return "trend"
-    else:
-        return "range"
+    profit_target = float(input("Enter your profit target percentage (e.g., 2 for 2%): "))
+    risk_reward_ratio = float(input("Enter your preferred risk-reward ratio (e.g., 2 for 2:1): "))
+    return profit_target / 100, risk_reward_ratio
 
-# Step 4: Risk Management and Position Sizing with Risk-Reward Ratio
-def calculate_position(balance, entry_price, stop_loss, target_price, risk_percentage=1, min_rr_ratio=2):
+# Step 4: Backtest the Strategy
+def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio):
     """
-    Calculate the position size based on the account balance, risk per trade, stop-loss, and reward targets.
-    Ensure minimum risk-reward ratio is met before placing the trade.
+    Perform a backtest of the strategy using both intraday and daily data.
     """
-    # Calculate the risk amount (e.g., risking 1% of the account balance)
-    risk_amount = balance * (risk_percentage / 100)
-    
-    # Calculate the stop-loss and reward distance
-    stop_loss_distance = abs(entry_price - stop_loss)
-    reward_distance = abs(target_price - entry_price)
-    
-    # Ensure the minimum risk-reward ratio is met
-    if reward_distance / stop_loss_distance < min_rr_ratio:
-        return 0  # Do not place the trade if the risk-reward ratio is insufficient
-    
-    # Calculate position size, and ensure it doesn't exceed the balance
-    position_size = min(risk_amount / stop_loss_distance, balance / entry_price)
-    
-    # Add a minimum position size threshold to avoid extremely small trades
-    if position_size < 0.01:  # Assume we don't want to trade less than 0.01 shares
-        position_size = 0
-    
-    return position_size
-
-# Sharpe Ratio calculation: (mean return - risk-free rate) / standard deviation of returns
-def calculate_sharpe_ratio(returns, risk_free_rate=0):
-    if len(returns) == 0:
-        return 0
-    excess_returns = [r - risk_free_rate for r in returns]
-    if np.std(excess_returns) == 0:
-        return 0
-    return np.mean(excess_returns) / np.std(excess_returns)
-
-# Max Drawdown calculation: maximum peak-to-trough decline in balance
-def calculate_max_drawdown(balance_history):
-    peak = balance_history[0]
-    max_drawdown = 0
-    for balance in balance_history:
-        peak = max(peak, balance)
-        drawdown = (peak - balance) / peak
-        max_drawdown = max(max_drawdown, drawdown)
-    return max_drawdown
-
-# Profit Factor: ratio of gross profits to gross losses
-def calculate_profit_factor(gross_profit, gross_loss):
-    if gross_loss == 0:
-        return np.inf  # Avoid division by zero
-    return gross_profit / abs(gross_loss)
-
-# Step 5: Backtesting the Strategy and Calculating Performance Metrics
-def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, min_rr_ratio=2):
-    """
-    Perform a backtest of the strategy on the given data. 
-    Calculate performance metrics like Sharpe ratio, max drawdown, and profit factor.
-    """
-    balance = initial_balance
+    balance = 10000  # Initial capital
     position = 0
     trade_log = []
     num_trades = 0
-    wins = 0
-    gross_profit = 0
-    gross_loss = 0
-    balance_history = [initial_balance]  # Track balance over time for max drawdown
-    returns = []
-    peak_balance = initial_balance  # Track peak balance for max drawdown calculation
 
-    for i in range(1, len(data)):
-        latest_rsi = data['RSI'].iloc[i]
-        latest_close = data['Close'].iloc[i]
-        lower_band = data['Lower_Band'].iloc[i]
-        upper_band = data['Upper_Band'].iloc[i]
-        stop_loss_buy = latest_close * 0.99
-        stop_loss_sell = latest_close * 1.01
-        target_price_buy = latest_close * 1.02  # 2% profit target for example
-        target_price_sell = latest_close * 0.98  # 2% stop-loss target
+    # Use daily data to guide the overall trend and intraday data for trades
+    for i in range(1, len(intraday_data)):
+        latest_rsi_intraday = intraday_data['RSI'].iloc[i]
+        latest_close_intraday = intraday_data['Close'].iloc[i]
+        lower_band_intraday = intraday_data['Lower_Band'].iloc[i]
+        upper_band_intraday = intraday_data['Upper_Band'].iloc[i]
+
+        latest_rsi_daily = daily_data['RSI'].iloc[-1]  # Current daily RSI
+        lower_band_daily = daily_data['Lower_Band'].iloc[-1]  # Current daily lower Bollinger Band
+        upper_band_daily = daily_data['Upper_Band'].iloc[-1]  # Current daily upper Bollinger Band
+
+        stop_loss = latest_close_intraday * (1 - (1 / risk_reward_ratio))  # Calculate stop-loss based on risk-reward ratio
+        target_price = latest_close_intraday * (1 + profit_target)  # Calculate target price based on profit target
+
+        # Use multi-timeframe confirmation for buy signals
+        if latest_rsi_intraday < 40 and latest_close_intraday <= lower_band_intraday and latest_rsi_daily < 40 and position == 0:
+            # Buy the position based on both intraday and daily confirmation
+            position = balance / latest_close_intraday  # Number of shares we can buy
+            balance = 0  # All money is invested
+            trade_log.append(f"Buy {position:.2f} shares at {latest_close_intraday:.2f} on {intraday_data.index[i]}")
         
-        # Buy condition for range markets
-        if regime == "range" and latest_rsi < 40 and latest_close <= lower_band:
-            position_size = calculate_position(balance, latest_close, stop_loss_buy, target_price_buy, risk_percentage, min_rr_ratio)
-            if position_size > 0:
-                balance -= position_size * latest_close
-                position = position_size  # Buy the position
-                trade_log.append(f"Buy {position_size:.2f} shares at {latest_close:.2f} on {data.index[i]}")
-        
-        # Sell condition for range markets
-        elif regime == "range" and latest_rsi > 60 and latest_close >= upper_band and position > 0:
-            sell_price = latest_close
-            profit = (sell_price - stop_loss_buy) * position  # Calculate profit/loss (use the buy price for comparison)
-            balance += sell_price * position  # Update the balance with the new sale price
+        # Sell condition using both intraday and daily confirmation
+        elif latest_rsi_intraday > 60 and latest_close_intraday >= upper_band_intraday and latest_rsi_daily > 60 and position > 0:
+            # Sell the position
+            balance = position * latest_close_intraday  # Liquidate the position
+            trade_log.append(f"Sell {position:.2f} shares at {latest_close_intraday:.2f} on {intraday_data.index[i]}")
+            position = 0  # Reset position after selling
 
-            trade_log.append(f"Sell {position:.2f} shares at {sell_price:.2f} on {data.index[i]}")
-            
-            # Debugging output to track each trade's profit or loss
-            print(f"Trade executed: Buy price = {stop_loss_buy}, Sell price = {sell_price}, Profit = {profit}")
-            
-            # Track win/loss and update gross profits and losses
-            if profit > 0:
-                gross_profit += profit
-                wins += 1
-                print(f"Win recorded: Total Wins = {wins}, Gross Profit = {gross_profit}")
-            else:
-                gross_loss += abs(profit)
-                print(f"Loss recorded: Gross Loss = {gross_loss}")
-            
-            position = 0  # Reset position after sell
-
-        # Track balance history and returns
-        if balance_history[-1] != 0:  # Avoid divide by zero
-            returns.append((balance - balance_history[-1]) / balance_history[-1])
-        balance_history.append(balance)
-        peak_balance = max(peak_balance, balance)  # Update the peak balance for drawdown calculation
         num_trades += 1
 
-    # Calculate final balance
-    final_balance = balance + (position * data['Close'].iloc[-1]) if position > 0 else balance
+    # Final balance after backtest
+    final_balance = balance if position == 0 else position * intraday_data['Close'].iloc[-1]
     
-    # Calculate performance metrics
-    sharpe_ratio = calculate_sharpe_ratio(returns) if len(returns) > 0 else 0
-    max_drawdown = calculate_max_drawdown(balance_history)
-    profit_factor = calculate_profit_factor(gross_profit, gross_loss)
-    
-    # Debugging output for final results
-    print(f"Final Balance: ${final_balance:.2f}, Wins: {wins}, Gross Profit: {gross_profit}, Gross Loss: {gross_loss}")
-    print(f"Sharpe Ratio: {sharpe_ratio}, Max Drawdown: {max_drawdown}, Profit Factor: {profit_factor}")
-    
-    return final_balance, trade_log, wins, num_trades, sharpe_ratio, max_drawdown, profit_factor
-    
-# Step 6: Plot and Show Results
-def plot_reversals(data, ticker):
+    # Display the results of the backtest
+    print(f"Final Balance: ${final_balance:.2f}")
+    print(f"Number of Trades: {num_trades}")
+    for log in trade_log:
+        print(log)
+
+    return final_balance, trade_log
+
+# Step 5: Suggest Next Trade
+def suggest_next_trade(intraday_data, daily_data):
     """
-    Visualize the price movements, indicators, and backtested trades.
+    Suggest the next trade (buy/sell) based on the latest indicators from both intraday and daily timeframes.
     """
-    fig = go.Figure()
+    latest_rsi_intraday = intraday_data['RSI'].iloc[-1]
+    latest_close_intraday = intraday_data['Close'].iloc[-1]
+    lower_band_intraday = intraday_data['Lower_Band'].iloc[-1]
+    upper_band_intraday = intraday_data['Upper_Band'].iloc[-1]
 
-    # Plot Closing Price
-    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name=f'{ticker} Close Price', line=dict(color='blue')))
+    latest_rsi_daily = daily_data['RSI'].iloc[-1]
+    lower_band_daily = daily_data['Lower_Band'].iloc[-1]
+    upper_band_daily = daily_data['Upper_Band'].iloc[-1]
+
+    # Multi-timeframe confirmation for buy/sell decisions
+    if latest_rsi_intraday < 40 and latest_close_intraday <= lower_band_intraday and latest_rsi_daily < 40:
+        return f"Suggested Trade: Buy at {latest_close_intraday:.2f} (RSI: {latest_rsi_intraday:.2f} Intraday, {latest_rsi_daily:.2f} Daily)"
+    elif latest_rsi_intraday > 60 and latest_close_intraday >= upper_band_intraday and latest_rsi_daily > 60:
+        return f"Suggested Trade: Sell at {latest_close_intraday:.2f} (RSI: {latest_rsi_intraday:.2f} Intraday, {latest_rsi_daily:.2f} Daily)"
+    else:
+        return f"Hold (Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f})"
+
+# Main Program
+if __name__ == "__main__":
+    ticker = input("Enter the ticker symbol for the stock (e.g., SPY, QQQ, AAPL): ").upper()
+    interval = input("Enter the interval for intraday data (e.g., 1m, 5m, 15m, 30m, 60m): ").lower()
     
-    # Plot Bollinger Bands
-    fig.add_trace(go.Scatter(x=data.index, y=data['Upper_Band'], mode='lines', name='Upper Bollinger Band', line=dict(color='orange', dash='dash')))
-    fig.add_trace(go.Scatter(x=data.index, y=data['Lower_Band'], mode='lines', name='Lower Bollinger Band', line=dict(color='orange', dash='dash')))
+    # Download historical data for both intraday and daily timeframes
+    intraday_data, daily_data = download_data(ticker, interval)
     
-    # Plot Moving Averages
-    fig.add_trace(go.Scatter(x=data.index, y=data['SMA50'], mode='lines', name='50-day SMA', line=dict(color='purple')))
-    fig.add_trace(go.Scatter(x=data.index, y=data['EMA20'], mode='lines', name='20-day EMA', line=dict(color='green')))
-    
-    fig.update_layout(title=f'{ticker} Price with Technical Indicators', xaxis_title='Date', yaxis_title='Price', hovermode='x unified', showlegend=True)
-    fig.show()
+    # Calculate indicators for both timeframes
+    intraday_data = calculate_indicators(intraday_data)
+    daily_data = calculate_indicators(daily_data)
 
-# Example usage
-ticker = "SPY"  # You can replace this with any stock or index symbol
-intraday_data, daily_data = download_data(ticker)
+    # Get user parameters (profit target and risk-reward ratio)
+    profit_target, risk_reward_ratio = get_user_parameters()
 
-# Calculate indicators for both timeframes
-intraday_data = calculate_indicators(intraday_data)
-daily_data = calculate_indicators(daily_data)
+    # Run backtest
+    final_balance, trade_log = backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio)
 
-# Detect the market regime using ADX
-market_regime = detect_trend(daily_data)
-print(f"Market Regime: {market_regime}")
-
-# Backtest the strategy based on the market regime
-final_balance, trades, wins, total_trades, sharpe_ratio, max_drawdown, profit_factor = backtest_strategy(daily_data, market_regime)
-
-# Show the backtesting results
-print(f"Final Balance: ${final_balance:.2f}")
-print(f"Number of Trades: {total_trades}, Wins: {wins}")
-print(f"Sharpe Ratio: {sharpe_ratio:.2f}, Max Drawdown: {max_drawdown:.2f}, Profit Factor: {profit_factor:.2f}")
-for trade in trades:
-    print(trade)
-
-# Plot the results
-plot_reversals(daily_data, ticker)
+    # Suggest the next trade based on current indicators
+    next_trade = suggest_next_trade(intraday_data, daily_data)
+    print(next_trade)
