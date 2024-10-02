@@ -143,15 +143,18 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
         # Sell condition for range markets
         elif regime == "range" and latest_rsi > 60 and latest_close >= upper_band and position > 0:
             sell_price = latest_close
-            profit = (sell_price - stop_loss_sell) * position  # Calculate profit/loss
-            balance += sell_price * position  # Add profit to balance
+            profit = (sell_price - stop_loss_buy) * position  # Calculate profit/loss (use the buy price for comparison)
+            balance += sell_price * position  # Update the balance with the new sale price
 
             trade_log.append(f"Sell {position:.2f} shares at {sell_price:.2f} on {data.index[i]}")
+            
+            # Track win/loss and update gross profits and losses
             if profit > 0:
                 gross_profit += profit
                 wins += 1
             else:
                 gross_loss += abs(profit)
+            
             position = 0  # Reset position after sell
 
         # Track balance history and returns
@@ -170,7 +173,7 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
     profit_factor = calculate_profit_factor(gross_profit, gross_loss)
     
     return final_balance, trade_log, wins, num_trades, sharpe_ratio, max_drawdown, profit_factor
-
+    
 # Step 6: Plot and Show Results
 def plot_reversals(data, ticker):
     """
