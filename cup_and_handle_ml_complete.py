@@ -370,6 +370,12 @@ for i, idx in enumerate(pattern_indices, start=1):
     # Prepare the data for candlestick chart
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
     candlestick_data.index = dates
+
+    # Define the filename for the last pattern's plot
+    if i == len(pattern_indices):
+        plot_filename = 'latest_cup_handle_pattern.png'
+    else:
+        plot_filename = f'cup_handle_pattern_{i}.png'  # e.g., pattern_1.png, pattern_2.png, etc.
     
     # Plot the candlestick chart
     mpf.plot(
@@ -380,7 +386,7 @@ for i, idx in enumerate(pattern_indices, start=1):
     )
     
     # Conditional prompt
-    if i < len(pattern_indices - 1):
+    if i < len(pattern_indices):
         input("Press Enter after closing the plot to view the next pattern...")
     else:
         print("This was the last detected cup and handle pattern.")
