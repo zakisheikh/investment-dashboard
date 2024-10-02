@@ -7,9 +7,13 @@ import numpy as np
 def download_data(ticker, interval='5m'):
     """
     Download both intraday and daily historical market data for a given ticker.
+    Limit intraday data based on Yahoo Finance's API restrictions.
     """
-    # Fetch intraday data
-    intraday_data = yf.Ticker(ticker).history(period='21d', interval=interval)  # Limited to 21 days for smaller intervals
+    # Fetch intraday data (handle the limitation of 1m data)
+    if interval == '1m':
+        intraday_data = yf.Ticker(ticker).history(period='7d', interval=interval)  # Only 7 days for 1-minute intervals
+    else:
+        intraday_data = yf.Ticker(ticker).history(period='21d', interval=interval)  # 21 days for larger intervals
     
     # Fetch daily data (1 year)
     daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
@@ -21,6 +25,10 @@ def calculate_indicators(data):
     """
     Calculate key technical indicators such as RSI, MACD, Bollinger Bands, and Moving Averages.
     """
+    if len(data) == 0:
+        print("No data available to calculate indicators.")
+        return data
+
     # RSI
     data['RSI'] = talib.RSI(data['Close'], timeperiod=14)
     
@@ -53,6 +61,11 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     position = 0
     trade_log = []
     num_trades = 0
+
+    # Check if intraday data is available
+    if len(intraday_data) == 0:
+        print("No intraday data available for backtesting.")
+        return balance, trade_log
 
     # Use daily data to guide the overall trend and intraday data for trades
     for i in range(1, len(intraday_data)):
@@ -100,6 +113,9 @@ def suggest_next_trade(intraday_data, daily_data):
     """
     Suggest the next trade (buy/sell) based on the latest indicators from both intraday and daily timeframes.
     """
+    if len(intraday_data) == 0 or len(daily_data) == 0:
+        return "No data available to suggest a trade."
+
     latest_rsi_intraday = intraday_data['RSI'].iloc[-1]
     latest_close_intraday = intraday_data['Close'].iloc[-1]
     lower_band_intraday = intraday_data['Lower_Band'].iloc[-1]
