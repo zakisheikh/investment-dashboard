@@ -48,8 +48,9 @@ def calculate_indicators(data):
     # Bollinger Bands
     data['Upper_Band'], data['Middle_Band'], data['Lower_Band'] = talib.BBANDS(data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
     
-    # Moving Averages
+    # Moving Averages: SMA50 and SMA200
     data['SMA50'] = talib.SMA(data['Close'], timeperiod=50)
+    data['SMA200'] = talib.SMA(data['Close'], timeperiod=200)
     
     return data
 
