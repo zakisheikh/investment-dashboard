@@ -343,7 +343,7 @@ if __name__ == '__main__':
     print(f"Created {len(windows)} windows of size {window_size}.")
 
     # Label windows
-    labels = label_windows(windows)
+    labels, cup_points_list = label_windows(windows)  # Unpack labels and cup points
     positive_samples = labels.sum()
     negative_samples = len(labels) - positive_samples
     print(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
