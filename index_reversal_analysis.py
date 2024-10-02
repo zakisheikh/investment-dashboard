@@ -120,6 +120,7 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
     gross_loss = 0
     balance_history = [initial_balance]  # Track balance over time for max drawdown
     returns = []
+    peak_balance = initial_balance  # Track peak balance for max drawdown calculation
 
     for i in range(1, len(data)):
         latest_rsi = data['RSI'].iloc[i]
@@ -141,9 +142,11 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
         
         # Sell condition for range markets
         elif regime == "range" and latest_rsi > 60 and latest_close >= upper_band and position > 0:
-            balance += position * latest_close
-            profit = (position * latest_close) - (position * target_price_sell)  # Calculate profit/loss
-            trade_log.append(f"Sell {position:.2f} shares at {latest_close:.2f} on {data.index[i]}")
+            sell_price = latest_close
+            profit = (sell_price - stop_loss_sell) * position  # Calculate profit/loss
+            balance += sell_price * position  # Add profit to balance
+
+            trade_log.append(f"Sell {position:.2f} shares at {sell_price:.2f} on {data.index[i]}")
             if profit > 0:
                 gross_profit += profit
                 wins += 1
@@ -153,10 +156,14 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
 
         # Track balance history and returns
         balance_history.append(balance)
-        returns.append((balance - initial_balance) / initial_balance)
-
+        peak_balance = max(peak_balance, balance)  # Update the peak balance for drawdown calculation
         num_trades += 1
 
+        # Calculate return based on balance changes
+        if len(balance_history) > 1:
+            returns.append((balance_history[-1] - balance_history[-2]) / balance_history[-2])
+
+    # Calculate final balance
     final_balance = balance + (position * data['Close'].iloc[-1]) if position > 0 else balance
     
     # Calculate performance metrics
