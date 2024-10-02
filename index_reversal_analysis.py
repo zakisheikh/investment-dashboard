@@ -2,6 +2,8 @@ import yfinance as yf
 import pandas as pd
 import talib
 import numpy as np
+import matplotlib.pyplot as plt
+
 
 # Step 1: Download Historical Data for both intraday and daily timeframes
 def download_data(ticker, interval='5m'):
@@ -68,10 +70,13 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     """
     Perform a backtest of the strategy using both intraday and daily data.
     Fine-tuned strategy with stricter RSI thresholds, dynamic stop-loss, and adjusted profit target.
+    Generates a chart showing buy/sell signals with arrows.
     """
     balance = 10000  # Initial capital
     position = 0
     trade_log = []
+    buy_signals = []
+    sell_signals = []
     num_trades = 0
 
     # Check if intraday data is available
@@ -83,28 +88,28 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     for i in range(1, len(intraday_data)):
         latest_rsi_intraday = intraday_data['RSI'].iloc[i]
         latest_close_intraday = intraday_data['Close'].iloc[i]
-        lower_band_intraday = intraday_data['Lower_Band'].iloc[i]
-        upper_band_intraday = intraday_data['Upper_Band'].iloc[i]
 
-        latest_rsi_daily = daily_data['RSI'].iloc[-1]  # Current daily RSI
-        lower_band_daily = daily_data['Lower_Band'].iloc[-1]  # Current daily lower Bollinger Band
-        upper_band_daily = daily_data['Upper_Band'].iloc[-1]  # Current daily upper Bollinger Band
+        # Add Moving Average Crossover
+        sma_short = intraday_data['SMA50'].iloc[i]  # Short-term moving average (50 periods)
+        sma_long = intraday_data['SMA200'].iloc[i]  # Long-term moving average (200 periods)
 
         stop_loss = latest_close_intraday * (1 - (1 / risk_reward_ratio))  # Calculate stop-loss based on risk-reward ratio
         target_price = latest_close_intraday * (1 + profit_target)  # Calculate target price based on profit target
 
-        # Stricter Buy Condition: RSI < 30 (oversold)
-        if latest_rsi_intraday < 30 and position == 0:
+        # Buy Condition: RSI < 30 (oversold) + Moving Average Crossover (SMA50 > SMA200)
+        if latest_rsi_intraday < 30 and sma_short > sma_long and position == 0:
             # Buy the position
             position = balance / latest_close_intraday  # Number of shares we can buy
             balance = 0  # All money is invested
             trade_log.append(f"Buy {position:.2f} shares at {latest_close_intraday:.2f} on {intraday_data.index[i]}")
+            buy_signals.append((intraday_data.index[i], latest_close_intraday))  # Store buy signal for plotting
         
-        # Stricter Sell Condition: RSI > 70 (overbought)
-        elif latest_rsi_intraday > 70 and position > 0:
+        # Sell Condition: RSI > 70 (overbought) + Moving Average Crossover (SMA50 < SMA200)
+        elif latest_rsi_intraday > 70 and sma_short < sma_long and position > 0:
             # Sell the position
             balance = position * latest_close_intraday  # Liquidate the position
             trade_log.append(f"Sell {position:.2f} shares at {latest_close_intraday:.2f} on {intraday_data.index[i]}")
+            sell_signals.append((intraday_data.index[i], latest_close_intraday))  # Store sell signal for plotting
             position = 0  # Reset position after selling
 
         num_trades += 1
@@ -118,7 +123,41 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     for log in trade_log:
         print(log)
 
+    # Suggest a hold reason: Near Buy or Near Sell based on RSI
+    if 30 < latest_rsi_intraday < 50:
+        print(f"Hold (Near Buy): Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
+    elif 50 < latest_rsi_intraday < 70:
+        print(f"Hold (Near Sell): Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
+    else:
+        print(f"Hold: Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {daily_data['RSI'].iloc[-1]:.2f}")
+
+    # Generate a chart with buy/sell signals
+    plot_signals(intraday_data, buy_signals, sell_signals)
     return final_balance, trade_log
+
+def plot_signals(data, buy_signals, sell_signals):
+    """
+    Plot the chart showing buy/sell signals using arrows.
+    """
+    plt.figure(figsize=(14, 8))
+    plt.plot(data.index, data['Close'], label='Close Price', color='blue')
+
+    # Plot buy signals with green arrows
+    for signal in buy_signals:
+        plt.annotate('Buy', xy=signal, xytext=(signal[0], signal[1] + 5),
+                     arrowprops=dict(facecolor='green', shrink=0.05), color='green')
+
+    # Plot sell signals with red arrows
+    for signal in sell_signals:
+        plt.annotate('Sell', xy=signal, xytext=(signal[0], signal[1] - 5),
+                     arrowprops=dict(facecolor='red', shrink=0.05), color='red')
+
+    plt.title('Price with Buy/Sell Signals')
+    plt.xlabel('Date')
+    plt.ylabel('Price')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 # Step 5: Suggest Next Trade
 def suggest_next_trade(intraday_data, daily_data):
