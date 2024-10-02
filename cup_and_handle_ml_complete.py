@@ -383,7 +383,7 @@ for i, idx in enumerate(pattern_indices, start=1):
         candlestick_data, 
         type='candle', 
         title=f"Cup and Handle Pattern {i}/{len(pattern_indices)}\n{date_range}\n{price_range}", 
-        style='yahoo'
+        style='yahoo',
         savefig=plot_filename  # Saves the plot as 'pattern_i.png'
     )
 
