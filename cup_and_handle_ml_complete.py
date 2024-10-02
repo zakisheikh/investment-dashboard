@@ -15,10 +15,6 @@ import io
 import warnings
 warnings.filterwarnings('ignore')
 
-# Import datetime and relativedelta for dynamic date handling
-from datetime import datetime
-from dateutil.relativedelta import relativedelta
-
 # Step 1: Data Collection and Preparation
 
 def fetch_stock_data(ticker, start_date, end_date):
@@ -255,7 +251,6 @@ def predict_on_new_data(model, data, window_size):
 
     Returns:
     - predictions (ndarray): Array of predictions.
-    - windows (list): List of DataFrame windows corresponding to predictions.
     """
     windows = create_windows(data, window_size)
     X_new = preprocess_windows(windows)
@@ -266,7 +261,7 @@ def predict_on_new_data(model, data, window_size):
     
     predictions_prob = model.predict(X_new, verbose=0)
 
-    # Restore stdout
+        # Restore stdout
     sys.stdout = original_stdout
     
     predictions = (predictions_prob > 0.5).astype("int32")
@@ -277,18 +272,13 @@ def predict_on_new_data(model, data, window_size):
 if __name__ == '__main__':
     # Parameters
     ticker = 'NVDA'
+    start_date = '2010-01-01'
+    end_date = '2023-12-31'
     window_size = 60  # Adjust based on expected pattern length
 
-    # Dynamic Date Handling
-    today = datetime.today()
-    
-    # Define the period for training data (e.g., last 2 years)
-    training_start_date = (today - relativedelta(years=2)).strftime('%Y-%m-%d')
-    training_end_date = today.strftime('%Y-%m-%d')
-    
-    # Fetch training data
-    data = fetch_stock_data(ticker, training_start_date, training_end_date)
-    print(f"Fetched {len(data)} rows of data for {ticker} from {training_start_date} to {training_end_date}.")
+    # Fetch data
+    data = fetch_stock_data(ticker, start_date, end_date)
+    print(f"Fetched {len(data)} rows of data for {ticker}.")
 
     # Create windows
     windows = create_windows(data, window_size)
@@ -345,42 +335,26 @@ if __name__ == '__main__':
     model.save('cup_and_handle_cnn_model.h5')
     print("Model saved as 'cup_and_handle_cnn_model.h5'.")
 
-    # Define the period for new data prediction (e.g., last 1 year)
-    new_start_date = (today - relativedelta(years=1)).strftime('%Y-%m-%d')
-    new_end_date = today.strftime('%Y-%m-%d')
-    
-    # Fetch new data
+    # Predict on new data
+    # For demonstration, we'll use recent data from the last year
+    new_start_date = '2023-09-30'
+    new_end_date = '2024-09-30'
     new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
-    
-    # Check if there is enough data for prediction
-    if len(new_data) < window_size:
-        print(f"Not enough data to create windows for prediction. Required: {window_size}, Available: {len(new_data)}")
-    else:
-        predictions, new_windows = predict_on_new_data(model, new_data, window_size)
+    predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
-        # Find windows where pattern is predicted
-        pattern_indices = np.where(predictions == 1)[0]
-        print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
+    # Find windows where pattern is predicted
+    pattern_indices = np.where(predictions == 1)[0]
+    print(f"Detected {len(pattern_indices)} potential cup and handle patterns in new data.")
 
-        # Enhance the output for detected patterns
-        for idx in pattern_indices:
-            window = new_windows[idx]
-            dates = window.index
-            start_date_pattern = dates[0].strftime('%Y-%m-%d')
-            end_date_pattern = dates[-1].strftime('%Y-%m-%d')
-            prices = window['Adj Close']
-            min_price = prices.min()
-            max_price = prices.max()
+    # Plot detected patterns
+    for idx in pattern_indices:
+        window = new_windows[idx]
+        dates = window.index
+        prices = window['Adj Close']
 
-            print(f"\nPattern detected from {start_date_pattern} to {end_date_pattern} (Index {idx})")
-            print(f"Price range: ${min_price:.2f} - ${max_price:.2f}")
-
-            # Plot the detected pattern
-            plt.figure(figsize=(10, 5))
-            plt.plot(dates, prices, marker='o')
-            plt.title(f"Cup and Handle Pattern Detected from {start_date_pattern} to {end_date_pattern}")
-            plt.xlabel('Date')
-            plt.ylabel('Adjusted Close Price')
-            plt.xticks(rotation=45)
-            plt.tight_layout()
-            plt.show()
+        plt.figure(figsize=(10, 5))
+        plt.plot(dates, prices)
+        plt.title(f"Detected Cup and Handle Pattern at index {idx}")
+        plt.xlabel('Date')
+        plt.ylabel('Adjusted Close Price')
+        plt.show()
