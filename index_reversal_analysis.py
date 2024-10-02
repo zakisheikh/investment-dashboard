@@ -35,26 +35,38 @@ def download_data(ticker, interval='5m'):
 # Step 2: Calculate Technical Indicators for both timeframes
 def calculate_indicators(data):
     """
-    Calculate key technical indicators such as RSI, MACD, Bollinger Bands, and Moving Averages.
+    Calculate key technical indicators such as RSI, MACD, Bollinger Bands, and Moving Averages using the 'ta' library.
     """
     if data is None or len(data) == 0:
         st.error("No data available to calculate indicators.")
         return data
 
-    # RSI
-    data['RSI'] = ta.RSI(data['Close'], timeperiod=14)
-    
-    # MACD
-    data['MACD'], data['MACD_Signal'], _ = ta.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
-    
-    # Bollinger Bands
-    data['Upper_Band'], data['Middle_Band'], data['Lower_Band'] = ta.BBANDS(data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
-    
-    # Moving Averages: SMA50 and SMA200
-    data['SMA50'] = ta.SMA(data['Close'], timeperiod=50)
-    data['SMA200'] = ta.SMA(data['Close'], timeperiod=200)
-    
-    return data
+    try:
+        # RSI
+        rsi = ta.momentum.RSIIndicator(close=data['Close'], window=14)
+        data['RSI'] = rsi.rsi()
+        
+        # MACD
+        macd = ta.trend.MACD(close=data['Close'], window_slow=26, window_fast=12, window_sign=9)
+        data['MACD'] = macd.macd()
+        data['MACD_Signal'] = macd.macd_signal()
+        
+        # Bollinger Bands
+        bollinger = ta.volatility.BollingerBands(close=data['Close'], window=20, window_dev=2)
+        data['Upper_Band'] = bollinger.bollinger_hband()
+        data['Middle_Band'] = bollinger.bollinger_mavg()
+        data['Lower_Band'] = bollinger.bollinger_lband()
+        
+        # Moving Averages: SMA50 and SMA200
+        sma50 = ta.trend.SMAIndicator(close=data['Close'], window=50)
+        data['SMA50'] = sma50.sma_indicator()
+        sma200 = ta.trend.SMAIndicator(close=data['Close'], window=200)
+        data['SMA200'] = sma200.sma_indicator()
+        
+        return data
+    except Exception as e:
+        st.error(f"Error calculating indicators: {e}")
+        return data
 
 # Step 3: User-Defined Parameters (Profit Target, Risk-Reward Ratio)
 def get_user_parameters():
