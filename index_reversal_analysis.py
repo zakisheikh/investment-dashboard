@@ -77,6 +77,8 @@ def calculate_position(balance, entry_price, stop_loss, risk_percentage=1):
 def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1):
     """
     Perform a backtest of the strategy on the given data.
+    - If market regime is 'trend', follow the trend.
+    - If market regime is 'range', apply mean-reversion strategies.
     """
     balance = initial_balance
     position = 0
@@ -95,22 +97,29 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1):
         stop_loss_buy = latest_close * 0.99
         stop_loss_sell = latest_close * 1.01
 
-        # Buy condition for trend or range markets
-        if regime == "trend" and latest_rsi < 30 and latest_close <= lower_band and position == 0:
+        # Buy condition for range markets
+        if regime == "range" and latest_rsi < 40 and latest_close <= lower_band:
+            # Looser condition for buying in range-bound markets
             position_size = calculate_position(balance, latest_close, stop_loss_buy, risk_percentage)
-            balance -= position_size * latest_close
-            position = position_size  # Buy the position
-            trade_log.append(f"Buy {position_size:.2f} shares at {latest_close:.2f} on {data.index[i]}")
-        elif regime == "range" and latest_rsi > 70 and latest_close >= upper_band and position > 0:
-            balance += position * latest_close  # Sell the position
-            trade_log.append(f"Sell at {latest_close:.2f} on {data.index[i]}")
-            position = 0  # Exit the position
+            if position_size > 0:
+                balance -= position_size * latest_close
+                position = position_size  # Buy the position
+                trade_log.append(f"Buy {position_size} shares at {latest_close} on {data.index[i]}")
+                print(f"Buying {position_size} shares at {latest_close} on {data.index[i]}")
+        
+        # Sell condition for range markets
+        elif regime == "range" and latest_rsi > 60 and latest_close >= upper_band and position > 0:
+            # Looser condition for selling in range-bound markets
+            balance += position * latest_close
+            trade_log.append(f"Sell {position} shares at {latest_close} on {data.index[i]}")
+            print(f"Selling {position} shares at {latest_close} on {data.index[i]}")
+            position = 0  # Reset position after sell
 
-        # Track wins and losses
+        # Track trades
+        num_trades += 1
         if position == 0 and balance > initial_balance:
             winning_trades += 1
-        num_trades += 1
-    
+
     final_balance = balance + (position * data['Close'].iloc[-1]) if position > 0 else balance
     return final_balance, trade_log, winning_trades, num_trades
 
