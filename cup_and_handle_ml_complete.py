@@ -359,4 +359,4 @@ if __name__ == '__main__':
     candlestick_data.index = dates
 
     # Plot the candlestick chart
-    mpf.plot(candlestick_data, type='candle', title=f"Detected Cup and Handle Pattern from {date_range}", style='yahoo', volume=True)
+    mpf.plot(candlestick_data, type='candle', title=f"Detected Cup and Handle Pattern from {date_range}", style='yahoo')
