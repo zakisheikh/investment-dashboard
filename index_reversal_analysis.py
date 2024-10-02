@@ -10,8 +10,8 @@ def download_data(ticker):
     """
     Download both intraday and daily historical market data for a given ticker.
     """
-    # Fetch intraday data (5-minute intervals, 60 days)
-    intraday_data = yf.Ticker(ticker).history(period='60d', interval='5m')
+    # Fetch intraday data (5-minute intervals, 5 days)
+    intraday_data = yf.Ticker(ticker).history(period='5d', interval='5m')
     
     # Fetch daily data (1 year)
     daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
@@ -70,6 +70,7 @@ def calculate_position(balance, entry_price, stop_loss, risk_percentage=1):
         stop_loss_distance = entry_price * 0.01  # Avoid division by zero (1% default)
     
     position_size = risk_amount / stop_loss_distance
+    position_size = min(position_size, balance / entry_price)  # Ensure we don't over-leverage
     return position_size
 
 # Step 5: Backtesting the Strategy
@@ -95,16 +96,15 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1):
         stop_loss_sell = latest_close * 1.01
 
         # Buy condition for trend or range markets
-        if regime == "trend" and latest_rsi < 30 and latest_close <= lower_band:
+        if regime == "trend" and latest_rsi < 30 and latest_close <= lower_band and position == 0:
             position_size = calculate_position(balance, latest_close, stop_loss_buy, risk_percentage)
             balance -= position_size * latest_close
             position = position_size  # Buy the position
-            trade_log.append(f"Buy {position_size} shares at {latest_close} on {data.index[i]}")
-        elif regime == "range" and latest_rsi > 70 and latest_close >= upper_band:
-            position_size = calculate_position(balance, latest_close, stop_loss_sell, risk_percentage)
-            balance += position_size * latest_close
-            position = 0  # Sell the position
-            trade_log.append(f"Sell at {latest_close} on {data.index[i]}")
+            trade_log.append(f"Buy {position_size:.2f} shares at {latest_close:.2f} on {data.index[i]}")
+        elif regime == "range" and latest_rsi > 70 and latest_close >= upper_band and position > 0:
+            balance += position * latest_close  # Sell the position
+            trade_log.append(f"Sell at {latest_close:.2f} on {data.index[i]}")
+            position = 0  # Exit the position
 
         # Track wins and losses
         if position == 0 and balance > initial_balance:
