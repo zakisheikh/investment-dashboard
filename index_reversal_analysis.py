@@ -11,26 +11,40 @@ def download_data(ticker, interval='5m'):
     Download both intraday and daily historical market data for a given ticker.
     Handle the limitations of Yahoo Finance's API for different intraday intervals.
     """
-    if interval == '1m':
-        # 1-minute interval allows only 7 days
-        intraday_data = yf.Ticker(ticker).history(period='5d', interval=interval)
-    elif interval in ['2m', '5m']:
-        # 2-minute and 5-minute intervals allow 30 days
-        intraday_data = yf.Ticker(ticker).history(period='1mo', interval=interval)
-    elif interval in ['15m', '30m']:
-        # 15-minute and 30-minute intervals allow 90 days
-        intraday_data = yf.Ticker(ticker).history(period='2mo', interval=interval)
-    elif interval in ['60m', '1h']:
-        # 60-minute and 1-hour intervals allow 180 days
-        intraday_data = yf.Ticker(ticker).history(period='6mo', interval=interval)
-    else:
-        st.error(f"Interval '{interval}' is not supported. Please choose a valid interval.")
+    try:
+        if interval == '1m':
+            # 1-minute interval allows only 7 days
+            intraday_data = yf.Ticker(ticker).history(period='7d', interval=interval)
+        elif interval in ['2m', '5m']:
+            # 2-minute and 5-minute intervals allow 60 days
+            intraday_data = yf.Ticker(ticker).history(period='60d', interval=interval)
+        elif interval in ['15m', '30m']:
+            # 15-minute and 30-minute intervals allow 60 days
+            intraday_data = yf.Ticker(ticker).history(period='60d', interval=interval)
+        elif interval in ['60m', '1h']:
+            # 60-minute and 1-hour intervals allow up to 730 days (2 years)
+            intraday_data = yf.Ticker(ticker).history(period='2y', interval=interval)
+        else:
+            st.error(f"Interval '{interval}' is not supported. Please choose a valid interval.")
+            return None, None
+
+        # Fetch daily data (1 year)
+        daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
+
+        if intraday_data.empty:
+            st.error(f"No intraday data found for {ticker} with interval '{interval}'.")
+            return None, None
+
+        if daily_data.empty:
+            st.error(f"No daily data found for {ticker}.")
+            return None, None
+
+        return intraday_data, daily_data
+
+    except Exception as e:
+        st.error(f"Error downloading data for {ticker}: {e}")
         return None, None
 
-    # Fetch daily data (1 year)
-    daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
-    
-    return intraday_data, daily_data
 
 # Step 2: Calculate Technical Indicators for both timeframes
 def calculate_indicators(data):
