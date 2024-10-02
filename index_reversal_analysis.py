@@ -155,19 +155,17 @@ def backtest_strategy(data, regime, initial_balance=10000, risk_percentage=1, mi
             position = 0  # Reset position after sell
 
         # Track balance history and returns
+        if balance_history[-1] != 0:  # Avoid divide by zero
+            returns.append((balance - balance_history[-1]) / balance_history[-1])
         balance_history.append(balance)
         peak_balance = max(peak_balance, balance)  # Update the peak balance for drawdown calculation
         num_trades += 1
-
-        # Calculate return based on balance changes
-        if len(balance_history) > 1:
-            returns.append((balance_history[-1] - balance_history[-2]) / balance_history[-2])
 
     # Calculate final balance
     final_balance = balance + (position * data['Close'].iloc[-1]) if position > 0 else balance
     
     # Calculate performance metrics
-    sharpe_ratio = calculate_sharpe_ratio(returns)
+    sharpe_ratio = calculate_sharpe_ratio(returns) if len(returns) > 0 else 0
     max_drawdown = calculate_max_drawdown(balance_history)
     profit_factor = calculate_profit_factor(gross_profit, gross_loss)
     
