@@ -354,6 +354,11 @@ if __name__ == '__main__':
         prices = window['Adj Close']
         date_range = f"{dates[0].strftime('%Y-%m-%d')} to {dates[-1].strftime('%Y-%m-%d')}"
 
+    # Calculate the price range
+    price_min = window['Low'].min()
+    price_max = window['High'].max()
+    price_range = f"Price range: {price_min:.2f} to {price_max:.2f}"
+    
     # Prepare the data for candlestick chart
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
     candlestick_data.index = dates
