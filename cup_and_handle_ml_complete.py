@@ -351,7 +351,6 @@ if __name__ == '__main__':
 for idx in pattern_indices:
     window = new_windows[idx]
     dates = window.index
-    prices = window['Adj Close']
     date_range = f"{dates[0].strftime('%Y-%m-%d')} to {dates[-1].strftime('%Y-%m-%d')}"
     
     # Calculate the price range
@@ -363,20 +362,13 @@ for idx in pattern_indices:
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
     candlestick_data.index = dates
     
-    # Plot the candlestick chart with returnfig=True
-    fig, ax = mpf.plot(
+    # Plot the candlestick chart
+    mpf.plot(
         candlestick_data, 
         type='candle', 
         title=f"Cup and Handle Pattern\n{date_range}\n{price_range}", 
-        style='yahoo',
-        returnfig=True
+        style='yahoo'
     )
     
-    # Show the plot without blocking
-    plt.show(block=False)
-    
-    # Optional: Add a short pause to allow rendering
-    plt.pause(0.1)
-    
-    # Optional: Close the plot after a certain time or based on a condition
-    # plt.close(fig)
+    # Prompt the user to proceed
+    input("Press Enter after closing the plot to view the next pattern...")
