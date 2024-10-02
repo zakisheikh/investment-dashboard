@@ -66,6 +66,7 @@ def get_user_parameters():
 def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio):
     """
     Perform a backtest of the strategy using both intraday and daily data.
+    Include price action logic based on moving average crossovers.
     """
     balance = 10000  # Initial capital
     position = 0
@@ -91,15 +92,19 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
         stop_loss = latest_close_intraday * (1 - (1 / risk_reward_ratio))  # Calculate stop-loss based on risk-reward ratio
         target_price = latest_close_intraday * (1 + profit_target)  # Calculate target price based on profit target
 
-        # Use multi-timeframe confirmation for buy signals
-        if latest_rsi_intraday < 40 and latest_close_intraday <= lower_band_intraday and latest_rsi_daily < 40 and position == 0:
-            # Buy the position based on both intraday and daily confirmation
+        # Add price action logic based on moving averages
+        sma_short = intraday_data['SMA50'].iloc[i]  # Short-term moving average (50 periods)
+        sma_long = intraday_data['SMA200'].iloc[i]  # Long-term moving average (200 periods)
+
+        # Relaxed Buy Condition: RSI < 50 + Moving Average Crossover (sma_short > sma_long)
+        if latest_rsi_intraday < 50 and sma_short > sma_long and position == 0:
+            # Buy the position based on intraday and moving average confirmation
             position = balance / latest_close_intraday  # Number of shares we can buy
             balance = 0  # All money is invested
             trade_log.append(f"Buy {position:.2f} shares at {latest_close_intraday:.2f} on {intraday_data.index[i]}")
         
-        # Sell condition using both intraday and daily confirmation
-        elif latest_rsi_intraday > 60 and latest_close_intraday >= upper_band_intraday and latest_rsi_daily > 60 and position > 0:
+        # Relaxed Sell Condition: RSI > 50 + Moving Average Crossover (sma_short < sma_long)
+        elif latest_rsi_intraday > 50 and sma_short < sma_long and position > 0:
             # Sell the position
             balance = position * latest_close_intraday  # Liquidate the position
             trade_log.append(f"Sell {position:.2f} shares at {latest_close_intraday:.2f} on {intraday_data.index[i]}")
