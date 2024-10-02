@@ -1,6 +1,6 @@
 import yfinance as yf
 import pandas as pd
-import talib
+import ta
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
@@ -42,17 +42,17 @@ def calculate_indicators(data):
         return data
 
     # RSI
-    data['RSI'] = talib.RSI(data['Close'], timeperiod=14)
+    data['RSI'] = ta.RSI(data['Close'], timeperiod=14)
     
     # MACD
-    data['MACD'], data['MACD_Signal'], _ = talib.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
+    data['MACD'], data['MACD_Signal'], _ = ta.MACD(data['Close'], fastperiod=12, slowperiod=26, signalperiod=9)
     
     # Bollinger Bands
-    data['Upper_Band'], data['Middle_Band'], data['Lower_Band'] = talib.BBANDS(data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
+    data['Upper_Band'], data['Middle_Band'], data['Lower_Band'] = ta.BBANDS(data['Close'], timeperiod=20, nbdevup=2, nbdevdn=2)
     
     # Moving Averages: SMA50 and SMA200
-    data['SMA50'] = talib.SMA(data['Close'], timeperiod=50)
-    data['SMA200'] = talib.SMA(data['Close'], timeperiod=200)
+    data['SMA50'] = ta.SMA(data['Close'], timeperiod=50)
+    data['SMA200'] = ta.SMA(data['Close'], timeperiod=200)
     
     return data
 
