@@ -14,13 +14,13 @@ def download_data(ticker, interval='5m'):
         intraday_data = yf.Ticker(ticker).history(period='5d', interval=interval)
     elif interval in ['2m', '5m']:
         # 2-minute and 5-minute intervals allow 30 days
-        intraday_data = yf.Ticker(ticker).history(period='30d', interval=interval)
+        intraday_data = yf.Ticker(ticker).history(period='1mo', interval=interval)
     elif interval in ['15m', '30m']:
         # 15-minute and 30-minute intervals allow 90 days
-        intraday_data = yf.Ticker(ticker).history(period='90d', interval=interval)
+        intraday_data = yf.Ticker(ticker).history(period='3mo', interval=interval)
     elif interval in ['60m', '1h']:
         # 60-minute and 1-hour intervals allow 180 days
-        intraday_data = yf.Ticker(ticker).history(period='180d', interval=interval)
+        intraday_data = yf.Ticker(ticker).history(period='6mo', interval=interval)
     else:
         print(f"Interval '{interval}' is not supported. Please choose a valid interval.")
         return None, None
