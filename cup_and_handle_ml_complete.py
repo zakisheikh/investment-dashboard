@@ -10,6 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
 import sys
 import io
+impot mplfinance as mpf
 
 # Suppress warnings (optional)
 import warnings
@@ -358,4 +359,4 @@ if __name__ == '__main__':
     candlestick_data.index = dates
 
     # Plot the candlestick chart
-    mpf.plot(candlestick_data, type='candle', title=f"Detected Cup and Handle Pattern from {date_range}", style='charles', volume=True)
+    mpf.plot(candlestick_data, type='candle', title=f"Detected Cup and Handle Pattern from {date_range}", style='yahoo', volume=True)
