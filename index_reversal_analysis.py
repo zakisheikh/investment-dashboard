@@ -19,7 +19,7 @@ def download_data(ticker, interval='5m'):
         intraday_data = yf.Ticker(ticker).history(period='1mo', interval=interval)
     elif interval in ['15m', '30m']:
         # 15-minute and 30-minute intervals allow 90 days
-        intraday_data = yf.Ticker(ticker).history(period='3mo', interval=interval)
+        intraday_data = yf.Ticker(ticker).history(period='2mo', interval=interval)
     elif interval in ['60m', '1h']:
         # 60-minute and 1-hour intervals allow 180 days
         intraday_data = yf.Ticker(ticker).history(period='6mo', interval=interval)
