@@ -12,25 +12,34 @@ def download_data(ticker, interval='5m'):
     Handle the limitations of Yahoo Finance's API for different intraday intervals.
     """
     try:
+        # Define the end date as today
+        end_date = datetime.now()
+        
+        # Define the start date based on the interval
         if interval == '1m':
             # 1-minute interval allows only 7 days
-            intraday_data = yf.Ticker(ticker).history(period='7d', interval=interval)
+            start_date = end_date - timedelta(days=7)
         elif interval in ['2m', '5m']:
-            # 2-minute and 5-minute intervals allow 60 days
-            intraday_data = yf.Ticker(ticker).history(period='60d', interval=interval)
+            # 2-minute and 5-minute intervals allow up to 60 days
+            start_date = end_date - timedelta(days=60)
         elif interval in ['15m', '30m']:
-            # 15-minute and 30-minute intervals allow 60 days
-            intraday_data = yf.Ticker(ticker).history(period='60d', interval=interval)
+            # 15-minute and 30-minute intervals allow up to 60 days
+            start_date = end_date - timedelta(days=60)
         elif interval in ['60m', '1h']:
             # 60-minute and 1-hour intervals allow up to 730 days (2 years)
-            intraday_data = yf.Ticker(ticker).history(period='2y', interval=interval)
+            start_date = end_date - timedelta(days=730)
         else:
             st.error(f"Interval '{interval}' is not supported. Please choose a valid interval.")
             return None, None
 
+        # Fetch intraday data using start and end dates
+        intraday_data = yf.Ticker(ticker).history(start=start_date, end=end_date, interval=interval)
+        
         # Fetch daily data (1 year)
-        daily_data = yf.Ticker(ticker).history(period='1y', interval='1d')
+        daily_start_date = end_date - timedelta(days=365)
+        daily_data = yf.Ticker(ticker).history(start=daily_start_date, end=end_date, interval='1d')
 
+        # Validate data
         if intraday_data.empty:
             st.error(f"No intraday data found for {ticker} with interval '{interval}'.")
             return None, None
@@ -44,7 +53,6 @@ def download_data(ticker, interval='5m'):
     except Exception as e:
         st.error(f"Error downloading data for {ticker}: {e}")
         return None, None
-
 
 # Step 2: Calculate Technical Indicators for both timeframes
 def calculate_indicators(data):
