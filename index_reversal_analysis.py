@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 
 # Step 1: Download Historical Data for both intraday and daily timeframes
+@st.cache_data
 def download_data(ticker, interval='5m'):
     """
     Download both intraday and daily historical market data for a given ticker.
@@ -97,7 +98,7 @@ def get_user_parameters():
     """
     Get user-defined parameters like profit target and risk-reward ratio.
     """
-    profit_target = st.number_input("Enter your profit target percentage (e.g., 2 for 2%):", min_value=0.0, value=2.0)
+    profit_target = st.number_input("Enter your profit target percentage (e.g., 1.8 for 1.8%):", min_value=0.0, value=1.8)
     risk_reward_ratio = st.number_input("Enter your preferred risk-reward ratio (e.g., 2 for 2:1):", min_value=0.1, value=2.0)
     return profit_target / 100, risk_reward_ratio
 
@@ -105,11 +106,13 @@ def get_user_parameters():
 def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio):
     """
     Perform a backtest of the strategy using both intraday and daily data.
-    Updated strategy with enhanced hold messaging and dynamic profit target as a minimum.
+    Implements proper stop loss based on buy price and RRR.
     Generates a chart showing buy/sell signals with arrows.
     """
     balance = 10000  # Initial capital
     position = 0
+    buy_price = 0.0
+    stop_loss = 0.0
     trade_log = []
     buy_signals = []
     sell_signals = []
@@ -128,38 +131,50 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
 
     # Use daily data to guide the overall trend and intraday data for trades
     for i in range(1, len(intraday_data)):
-        latest_rsi_intraday = intraday_data['RSI'].iloc[i]
-        latest_close_intraday = intraday_data['Close'].iloc[i]
+        current_time = intraday_data.index[i]
+        current_price = intraday_data['Close'].iloc[i]
+        current_rsi_intraday = intraday_data['RSI'].iloc[i]
+        current_rsi_daily = daily_data['RSI'].iloc[-1]  # Latest daily RSI
 
-        # Add Moving Average Crossover
         sma_short = intraday_data['SMA50'].iloc[i]  # Short-term moving average (50 periods)
         sma_long = intraday_data['SMA200'].iloc[i]  # Long-term moving average (200 periods)
 
-        # Stop-loss and profit target (minimum target, allow trend to continue)
-        stop_loss = latest_close_intraday * (1 - (1 / risk_reward_ratio))  # Calculate stop-loss based on risk-reward ratio
-        target_price = latest_close_intraday * (1 + profit_target)  # Minimum target price, but trend can continue
+        if position > 0:
+            # Check for stop loss
+            if current_price <= stop_loss:
+                # Sell at stop loss
+                balance = position * current_price
+                trade_log.append(f"Sell {position:.2f} shares at ${current_price:.2f} on {current_time}")
+                sell_signals.append((current_time, current_price))
+                position = 0
+                num_trades += 1
+                continue  # Proceed to next data point
+
+            # Check for profit target
+            if current_price >= target_price:
+                # Sell at profit target
+                balance = position * current_price
+                trade_log.append(f"Sell {position:.2f} shares at ${current_price:.2f} on {current_time}")
+                sell_signals.append((current_time, current_price))
+                position = 0
+                num_trades += 1
+                continue  # Proceed to next data point
 
         # Buy Condition: RSI < 30 (oversold) + Moving Average Crossover (SMA50 > SMA200)
-        if latest_rsi_intraday < 30 and sma_short > sma_long and position == 0:
+        if current_rsi_intraday < 30 and sma_short > sma_long and position == 0:
             # Buy the position based on both RSI and moving average confirmation
-            position = balance / latest_close_intraday  # Number of shares we can buy
+            position = balance / current_price  # Number of shares we can buy
+            buy_price = current_price
+            stop_loss = buy_price * (1 - (profit_target / risk_reward_ratio))
+            target_price = buy_price * (1 + profit_target)
             balance = 0  # All money is invested
-            trade_log.append(f"Buy {position:.2f} shares at ${latest_close_intraday:.2f} on {intraday_data.index[i]}")
-            buy_signals.append((intraday_data.index[i], latest_close_intraday))  # Store buy signal for plotting
-        
-        # Sell Condition: RSI > 70 (overbought) + Moving Average Crossover (SMA50 < SMA200)
-        elif latest_rsi_intraday > 70 and sma_short < sma_long and position > 0:
-            # Sell the position
-            balance = position * latest_close_intraday  # Liquidate the position
-            trade_log.append(f"Sell {position:.2f} shares at ${latest_close_intraday:.2f} on {intraday_data.index[i]}")
-            sell_signals.append((intraday_data.index[i], latest_close_intraday))  # Store sell signal for plotting
-            position = 0  # Reset position after selling
-
-        num_trades += 1
+            trade_log.append(f"Buy {position:.2f} shares at ${current_price:.2f} on {current_time}")
+            buy_signals.append((current_time, current_price))
+            num_trades += 1
 
     # Final balance after backtest
     final_balance = balance if position == 0 else position * intraday_data['Close'].iloc[-1]
-    
+
     # Display the results of the backtest
     st.success(f"Final Balance: ${final_balance:.2f}")
     st.info(f"Number of Trades: {num_trades}")
@@ -237,11 +252,11 @@ def main():
     st.sidebar.header("User Inputs")
 
     # User Inputs
-    ticker = st.sidebar.text_input("Enter the ticker symbol for the stock (e.g., SPY, QQQ, AAPL):", value="AAPL").upper()
+    ticker = st.sidebar.text_input("Enter the ticker symbol for the stock (e.g., SPY, QQQ, AAPL, XLK):", value="XLK").upper()
     interval = st.sidebar.selectbox("Select the interval for intraday data:", ["1m", "2m", "5m", "15m", "30m", "60m"])
-    
+
     st.sidebar.markdown("---")
-    
+
     # Get user-defined parameters
     profit_target, risk_reward_ratio = get_user_parameters()
 
