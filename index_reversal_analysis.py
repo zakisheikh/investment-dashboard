@@ -4,6 +4,8 @@ import ta
 import numpy as np
 import matplotlib.pyplot as plt
 import streamlit as st
+from datetime import datetime, timedelta
+
 
 # Step 1: Download Historical Data for both intraday and daily timeframes
 def download_data(ticker, interval='5m'):
