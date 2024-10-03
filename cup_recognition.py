@@ -5,11 +5,9 @@ import yfinance as yf
 import tensorflow as tf
 from tensorflow.keras import layers, models
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report, confusion_matrix
 import mplfinance as mpf
 from datetime import datetime, timedelta
 import streamlit as st
-import os
 
 # Suppress warnings (optional)
 import warnings
@@ -195,13 +193,22 @@ if len(pattern_indices) > 0:
     last_idx = pattern_indices[-1]
     window = new_windows[last_idx]
     dates = window.index
+
+    # Format the dates without times
+    start_date_formatted = dates[0].strftime('%Y-%m-%d')
+    end_date_formatted = dates[-1].strftime('%Y-%m-%d')
+    
     price_min = window['Low'].min()
     price_max = window['High'].max()
     
-    st.write(f"Last detected cup and handle pattern from {dates[0]} to {dates[-1]}")
+    st.write(f"Last detected cup and handle pattern from {start_date_formatted} to {end_date_formatted}")
     st.write(f"Price range: {price_min:.2f} to {price_max:.2f}")
     
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
-    mpf.plot(candlestick_data, type='candle', style='yahoo', title="Last Detected Cup and Handle Pattern")
+
+    # Plot the candlestick chart
+    fig, ax = plt.subplots(figsize=(10, 6))
+    mpf.plot(candlestick_data, type='candle', style='yahoo', ax=ax, title="Last Detected Cup and Handle Pattern")
+    st.pyplot(fig)
 else:
     st.write("No cup and handle pattern detected in the new data.")
