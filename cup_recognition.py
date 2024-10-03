@@ -7,8 +7,6 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
-import sys
-import io
 import mplfinance as mpf
 from datetime import datetime, timedelta
 import streamlit as st
@@ -132,6 +130,19 @@ def build_cnn_model(input_shape):
     model.add(layers.Dense(1, activation='sigmoid'))
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     return model
+
+# Step 7: Prediction on New Data
+
+def predict_on_new_data(model, data, window_size):
+    """
+    Use the trained model to predict patterns on new data.
+    """
+    windows = create_windows(data, window_size)
+    X_new = preprocess_windows(windows)
+
+    predictions_prob = model.predict(X_new, verbose=0)
+    predictions = (predictions_prob > 0.5).astype("int32")
+    return predictions, windows
 
 # Step 5: Streamlit App Code
 
