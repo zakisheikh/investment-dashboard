@@ -1,5 +1,6 @@
 # cup_and_handle_ml_complete.py
 
+import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -8,69 +9,55 @@ import tensorflow as tf
 from tensorflow.keras import layers, models
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import classification_report, confusion_matrix
-import sys
-import io
 import mplfinance as mpf
-from datetime import datetime, timedelta
+from datetime as datetime, timedelta
 import os
 
-
-# Suppress warnings (optional)
+# Suppress warnings
 import warnings
 warnings.filterwarnings('ignore')
 
-# Step 1: Data Collection and Preparation
+# Streamlit App
+st.title("Cup and Handle Pattern Detection")
+st.write("This app detects Cup and Handle patterns in stock data using a CNN.")
 
-def fetch_stock_data(ticker, start_date, end_date):
-    """
-    Fetch historical stock data using yfinance.
+# User input for the stock ticker symbol
+ticker = st.text_input("Enter the stock ticker symbol (e.g., AAPL, NVDA)", "AAPL")
+window_size = st.slider("Select window size", min_value=10, max_value=120, value=60)
 
-    Parameters:
-    - ticker (str): Stock ticker symbol.
-    - start_date (str): Start date in 'YYYY-MM-DD' format.
-    - end_date (str): End date in 'YYYY-MM-DD' format.
+if st.button("Fetch and Process Data"):
+    # Use your original date logic (dates are not hard-coded)
+    start_date = '2010-01-01'  # Example: fixed for now, but can be adjusted dynamically
+    end_date = '2023-12-31'
+    
+    @st.cache
+    def fetch_stock_data(ticker, start_date, end_date):
+        data = yf.download(ticker, start=start_date, end=end_date)
+        data.dropna(inplace=True)
+        return data
 
-    Returns:
-    - data (DataFrame): Historical stock data.
-    """
-    data = yf.download(ticker, start=start_date, end=end_date)
-    data.dropna(inplace=True)
-    return data
+    # Fetch stock data
+    data = fetch_stock_data(ticker, start_date, end_date)
+    st.write(f"Fetched {len(data)} rows of data for {ticker}.")
+    
+    st.line_chart(data['Close'])
+    
+    # Data Preparation
+    def create_windows(data, window_size):
+        windows = []
+        for i in range(len(data) - window_size + 1):
+            window = data[i:i+window_size].copy()
+            windows.append(window)
+        return windows
 
-def create_windows(data, window_size):
-    """
-    Create sliding windows of data.
+    windows = create_windows(data, window_size)
 
-    Parameters:
-    - data (DataFrame): Stock data.
-    - window_size (int): Size of the window.
-
-    Returns:
-    - windows (list): List of DataFrame windows.
-    """
-    windows = []
-    for i in range(len(data) - window_size + 1):
-        window = data[i:i+window_size].copy()
-        windows.append(window)
-    return windows  # Return the list directly
-
-# Step 2: Data Labeling
-
-def label_windows(windows):
-    """
-    Label windows as containing a cup and handle pattern or not.
-
-    Parameters:
-    - windows (ndarray): Array of windows.
-
-    Returns:
-    - labels (ndarray): Array of labels (1 for pattern, 0 for no pattern).
-    """
-    labels = []
-    for window in windows:
-        label = detect_cup_and_handle_in_window(window)
-        labels.append(label)
-    return np.array(labels)
+    def label_windows(windows):
+        labels = []
+        for window in windows:
+            label = detect_cup_and_handle_in_window(window)
+            labels.append(label)
+        return np.array(labels)
 
 def detect_cup_and_handle_in_window(window):
     """
