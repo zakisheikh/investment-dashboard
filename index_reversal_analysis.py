@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from datetime import datetime, timedelta
 
-
 # Step 1: Download Historical Data for both intraday and daily timeframes
 @st.cache_data
 def download_data(ticker, interval='5m'):
@@ -107,12 +106,14 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     """
     Perform a backtest of the strategy using both intraday and daily data.
     Implements proper stop loss based on buy price and RRR.
+    Implements a trailing stop loss.
     Generates a chart showing buy/sell signals with arrows.
     """
     balance = 10000  # Initial capital
     position = 0
     buy_price = 0.0
     stop_loss = 0.0
+    trailing_stop_loss = 0.0
     trade_log = []
     buy_signals = []
     sell_signals = []
@@ -140,23 +141,49 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
         sma_long = intraday_data['SMA200'].iloc[i]  # Long-term moving average (200 periods)
 
         if position > 0:
+            # Update Trailing Stop Loss
+            if current_price > buy_price:
+                # Update trailing stop loss only if the price has moved up
+                trailing_stop_loss = max(trailing_stop_loss, current_price * (1 - (profit_target / risk_reward_ratio)))
+            
+            # Determine the active stop loss (whichever is higher: initial stop loss or trailing stop loss)
+            active_stop_loss = max(stop_loss, trailing_stop_loss) if trailing_stop_loss > 0 else stop_loss
+
             # Check for stop loss
-            if current_price <= stop_loss:
+            if current_price <= active_stop_loss:
                 # Sell at stop loss
                 balance = position * current_price
-                trade_log.append(f"Sell {position:.2f} shares at ${current_price:.2f} on {current_time}")
+                trade_log.append({
+                    'action': 'sell',
+                    'shares': position,
+                    'price': current_price,
+                    'time': current_time,
+                    'reason': 'stop_loss'
+                })
                 sell_signals.append((current_time, current_price))
                 position = 0
+                buy_price = 0.0
+                stop_loss = 0.0
+                trailing_stop_loss = 0.0
                 num_trades += 1
                 continue  # Proceed to next data point
 
             # Check for profit target
-            if current_price >= target_price:
+            if current_price >= buy_price * (1 + profit_target):
                 # Sell at profit target
                 balance = position * current_price
-                trade_log.append(f"Sell {position:.2f} shares at ${current_price:.2f} on {current_time}")
+                trade_log.append({
+                    'action': 'sell',
+                    'shares': position,
+                    'price': current_price,
+                    'time': current_time,
+                    'reason': 'profit_target'
+                })
                 sell_signals.append((current_time, current_price))
                 position = 0
+                buy_price = 0.0
+                stop_loss = 0.0
+                trailing_stop_loss = 0.0
                 num_trades += 1
                 continue  # Proceed to next data point
 
@@ -166,9 +193,15 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
             position = balance / current_price  # Number of shares we can buy
             buy_price = current_price
             stop_loss = buy_price * (1 - (profit_target / risk_reward_ratio))
-            target_price = buy_price * (1 + profit_target)
+            trailing_stop_loss = 0.0  # Reset trailing stop loss
             balance = 0  # All money is invested
-            trade_log.append(f"Buy {position:.2f} shares at ${current_price:.2f} on {current_time}")
+            trade_log.append({
+                'action': 'buy',
+                'shares': position,
+                'price': current_price,
+                'time': current_time,
+                'reason': 'buy_signal'
+            })
             buy_signals.append((current_time, current_price))
             num_trades += 1
 
@@ -178,18 +211,31 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     # Display the results of the backtest
     st.success(f"Final Balance: ${final_balance:.2f}")
     st.info(f"Number of Trades: {num_trades}")
+
+    # Display trade logs
     for log in trade_log:
-        st.write(log)
+        action = log['action'].capitalize()
+        shares = log['shares']
+        price = log['price']
+        time = log['time']
+        reason = log.get('reason', '')
+        if reason == 'buy_signal':
+            st.write(f"{action} {shares:.2f} shares at ${price:.2f} on {time}")
+        else:
+            st.write(f"{action} {shares:.2f} shares at ${price:.2f} on {time} ({reason})")
 
     # Enhanced hold messaging
     latest_rsi_intraday = intraday_data['RSI'].iloc[-1]
     latest_rsi_daily = daily_data['RSI'].iloc[-1]
-    if 30 < latest_rsi_intraday < 50:
-        st.warning(f"Holding: Possible Buy Signal Forming (RSI near 30) - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f}")
-    elif 50 < latest_rsi_intraday < 70:
-        st.warning(f"Holding: Possible Sell Signal Forming (RSI near 70) - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f}")
+    if position > 0:
+        if 30 < latest_rsi_intraday < 50:
+            st.warning(f"Holding: Possible Buy Signal Forming (RSI near 30) - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f}")
+        elif 50 < latest_rsi_intraday < 70:
+            st.warning(f"Holding: Possible Sell Signal Forming (RSI near 70) - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f}")
+        else:
+            st.info(f"Holding: Market in Neutral State - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f}")
     else:
-        st.info(f"Holding: Market in Neutral State - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f}")
+        st.info(f"All positions are closed - Intraday RSI: {latest_rsi_intraday:.2f}, Daily RSI: {latest_rsi_daily:.2f}")
 
     # Generate a chart with buy/sell signals
     plot_signals(intraday_data, buy_signals, sell_signals)
