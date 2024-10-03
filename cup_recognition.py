@@ -148,11 +148,11 @@ ticker = st.text_input("Enter the stock ticker symbol (e.g., AAPL, NVDA):", "AAP
 
 start_date = '2010-01-01'
 end_date = '2023-12-31'
-window_size = 80
+window_size = 60
 
 # Fetch data
 data = fetch_stock_data(ticker, start_date, end_date)
-st.write(f"🏗️  Fetching stock data for {ticker}... Hold on tight, weâ€™re diving into {len(data)} rows of financial history for {ticker}!")
+st.write(f"🏗️  Fetching stock data for {ticker}... Hold on tight, we're diving into {len(data)} rows of financial history for {ticker}!")
 # st.write(f"Fetched {len(data)} rows of data for {ticker}.")
 
 # Create windows
@@ -165,7 +165,7 @@ st.write(f"🔍 Scanning the data... We just crafted {len(windows)} windows of o
 labels = label_windows(windows)
 positive_samples = labels.sum()
 negative_samples = len(labels) - positive_samples
-st.write(f"💡 Pattern detection at work... Weâ€™ve uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
+st.write(f"💡 Pattern detection at work... We've uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
 # st.write(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
 
 # Preprocess windows
