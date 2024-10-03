@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split
 import mplfinance as mpf
 from datetime import datetime, timedelta
 import streamlit as st
-import talib
+import ta
 
 # Suppress warnings (optional)
 import warnings
@@ -158,7 +158,7 @@ def assess_risk(predictions_prob, window, past_patterns, market_data, volume_dat
     confidence_risk = 0 if predictions_prob > 0.8 else 1 if predictions_prob > 0.6 else 2
 
     # Volatility assessment using ATR (Average True Range)
-    atr = talib.ATR(window['High'], window['Low'], window['Close'], timeperiod=14)
+    atr = ta.ATR(window['High'], window['Low'], window['Close'], timeperiod=14)
     avg_atr = np.mean(atr)
     volatility_risk = 0 if avg_atr < 5 else 1  # Threshold based on typical values
 
