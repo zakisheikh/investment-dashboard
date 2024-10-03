@@ -207,8 +207,7 @@ if len(pattern_indices) > 0:
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
 
     # Plot the candlestick chart
-    fig, ax = plt.subplots(figsize=(10, 6))
-    mpf.plot(candlestick_data, type='candle', style='yahoo', ax=ax, title="Last Detected Cup and Handle Pattern")
-    st.pyplot(fig)
+    st.write("Last detected cup and handle pattern:")
+    mpf.plot(candlestick_data, type='candle', style='yahoo', title="Last Detected Cup and Handle Pattern", figsize=(10, 6))
 else:
     st.write("No cup and handle pattern detected in the new data.")
