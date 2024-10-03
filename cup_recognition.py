@@ -152,17 +152,21 @@ window_size = 60
 
 # Fetch data
 data = fetch_stock_data(ticker, start_date, end_date)
-st.write(f"Fetched {len(data)} rows of data for {ticker}.")
+st.write(f"🏗️  Fetching stock data for {ticker}... Hold on tight, we’re diving into {len(data)} rows of financial history for {ticker}!")
+# st.write(f"Fetched {len(data)} rows of data for {ticker}.")
 
 # Create windows
 windows = create_windows(data, window_size)
-st.write(f"Created {len(windows)} windows of size {window_size}.")
+st.write(f"🔍 Scanning the data... We just crafted {len(windows)} windows of opportunity, each with a size of {window_size} days. Time to dig deep!")
+# st.write(f"Created {len(windows)} windows of size {window_size}.")
+
 
 # Label windows
 labels = label_windows(windows)
 positive_samples = labels.sum()
 negative_samples = len(labels) - positive_samples
-st.write(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
+st.write(f"💡 Pattern detection at work... We’ve uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
+# st.write(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
 
 # Preprocess windows
 X = preprocess_windows(windows)
