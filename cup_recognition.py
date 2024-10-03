@@ -207,8 +207,11 @@ if len(pattern_indices) > 0:
     price_min = window['Low'].min()
     price_max = window['High'].max()
     
-    st.write(f"Last detected cup and handle pattern from {start_date_formatted} to {end_date_formatted}")
-    st.write(f"Price range: {price_min:.2f} to {price_max:.2f}")
+    # st.write(f"Last detected cup and handle pattern from {start_date_formatted} to {end_date_formatted}")
+    # st.write(f"Price range: {price_min:.2f} to {price_max:.2f}")
+    st.write(f"🎯 Look at that! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}. 
+    st.write(f"Ready for the numbers? 📈 Price danced from ${price_min:.2f} to ${price_max:.2f}.")
+
     
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
 
