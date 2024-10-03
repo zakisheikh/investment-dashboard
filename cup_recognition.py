@@ -212,7 +212,7 @@ if len(pattern_indices) > 0:
     st.write(f"🎯 Jackpot! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}.")
     st.markdown(f"📈 Ready for the numbers?")
     st.markdown(f"Price danced from ${price_min:.2f}")
-    st.markdown(" to ")
+    st.markdown(f" to ")
     st.markdown(f"${price_max:.2f}.")
 
 
