@@ -208,8 +208,14 @@ if len(pattern_indices) > 0:
     
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
 
-    # Allow mplfinance to create the figure
-    mpf.plot(candlestick_data, type='candle', style='yahoo', title="Last Detected Cup and Handle Pattern", figsize=(10, 6))
+    # Create a matplotlib figure to pass to mplfinance
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Use mplfinance to plot on the figure's axis
+    mpf.plot(candlestick_data, type='candle', style='yahoo', ax=ax)
+
+    # Display the plot using Streamlit's pyplot
+    st.pyplot(fig)
 
 else:
     st.write("No cup and handle pattern detected in the new data.")
