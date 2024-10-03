@@ -187,6 +187,9 @@ new_end_date = today.strftime('%Y-%m-%d')
 new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
 predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
+# Get indices where cup and handle patterns are detected
+pattern_indices = np.where(predictions == 1)[0]
+
 # Display last detected pattern
 if len(pattern_indices) > 0:
     last_idx = pattern_indices[-1]
