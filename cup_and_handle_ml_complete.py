@@ -336,7 +336,7 @@ if __name__ == '__main__':
     plt.show()
 
     # Save the model
-    model.save('cup_and_handle_cnn_model.h5')
+    model.save('cup_and_handle_cnn_model.keras')
     print("Model saved as 'cup_and_handle_cnn_model.h5'.")
 
     # Predict on new data
