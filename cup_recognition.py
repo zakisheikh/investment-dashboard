@@ -148,16 +148,16 @@ ticker = st.text_input("Enter the stock ticker symbol (e.g., AAPL, NVDA):", "AAP
 
 start_date = '2010-01-01'
 end_date = '2023-12-31'
-window_size = 60
+window_size = 80
 
 # Fetch data
 data = fetch_stock_data(ticker, start_date, end_date)
-st.write(f"ðŸ—ï¸  Fetching stock data for {ticker}... Hold on tight, weâ€™re diving into {len(data)} rows of financial history for {ticker}!")
+st.write(f"🏗️  Fetching stock data for {ticker}... Hold on tight, weâ€™re diving into {len(data)} rows of financial history for {ticker}!")
 # st.write(f"Fetched {len(data)} rows of data for {ticker}.")
 
 # Create windows
 windows = create_windows(data, window_size)
-st.write(f"ðŸ” Scanning the data... We just crafted {len(windows)} windows of opportunity, each with a size of {window_size} days. Time to dig deep!")
+st.write(f"🔍 Scanning the data... We just crafted {len(windows)} windows of opportunity, each with a size of {window_size} days. Time to dig deep!")
 # st.write(f"Created {len(windows)} windows of size {window_size}.")
 
 
@@ -165,7 +165,7 @@ st.write(f"ðŸ” Scanning the data... We just crafted {len(windows)} windows
 labels = label_windows(windows)
 positive_samples = labels.sum()
 negative_samples = len(labels) - positive_samples
-st.write(f"ðŸ’¡ Pattern detection at work... Weâ€™ve uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
+st.write(f"💡 Pattern detection at work... Weâ€™ve uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
 # st.write(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
 
 # Preprocess windows
@@ -209,8 +209,8 @@ if len(pattern_indices) > 0:
     
     # st.write(f"Last detected cup and handle pattern from {start_date_formatted} to {end_date_formatted}")
     # st.write(f"Price range: {price_min:.2f} to {price_max:.2f}")
-    st.write(f"ðŸŽ¯ Jackpot! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}.")
-    st.write(f"ðŸ“ˆ Ready for the numbers? Price danced from {price_min:.2f} to {price_max:.2f}.")
+    st.write(f"🎯 Jackpot! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}.")
+    st.write(f"📈 Ready for the numbers? Price danced from {price_min:.2f} to {price_max:.2f}.")
 
 
 
