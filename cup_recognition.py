@@ -8,7 +8,6 @@ from sklearn.model_selection import train_test_split
 import mplfinance as mpf
 from datetime import datetime, timedelta
 import streamlit as st
-import ta
 
 # Suppress warnings (optional)
 import warnings
@@ -140,53 +139,11 @@ def predict_on_new_data(model, data, window_size):
 
     predictions_prob = model.predict(X_new, verbose=0)
     predictions = (predictions_prob > 0.5).astype("int32")
-    return predictions, windows, predictions_prob
-
-# Step 8: Risk Assessment
-
-def assess_risk(predictions_prob, window, past_patterns, market_data, volume_data):
-    """
-    Assess the risk for each detected pattern based on various factors:
-    1. Model confidence (prediction probability)
-    2. Historical success rate of the pattern (backtest result)
-    3. Market condition (bull or bear)
-    4. Volume confirmation (average volume over period)
-    5. Volatility assessment (using ATR)
-    """
-
-    # Confidence risk based on the model's probability
-    confidence_risk = 0 if predictions_prob > 0.8 else 1 if predictions_prob > 0.6 else 2
-
-    # Volatility assessment using ATR (Average True Range)
-    atr = ta.ATR(window['High'], window['Low'], window['Close'], timeperiod=14)
-    avg_atr = np.mean(atr)
-    volatility_risk = 0 if avg_atr < 5 else 1  # Threshold based on typical values
-
-    # Historical success rate (based on past pattern performance)
-    past_success_rate = past_patterns['success_rate'].mean()
-    success_risk = 0 if past_success_rate > 0.75 else 1 if past_success_rate > 0.5 else 2
-
-    # Market condition: use the trend of the market index (like S&P 500 or NASDAQ)
-    market_trend = (market_data['Close'][-1] > market_data['200_MA'][-1])
-    market_risk = 0 if market_trend else 2  # Bull market if index is above 200-MA
-
-    # Volume assessment
-    avg_volume = np.mean(volume_data)
-    volume_risk = 0 if avg_volume > np.median(volume_data) else 1
-
-    # Final risk score (sum of all factors)
-    risk_score = confidence_risk + volatility_risk + success_risk + market_risk + volume_risk
-
-    if risk_score <= 2:
-        return "Low Risk"
-    elif 3 <= risk_score <= 5:
-        return "Medium Risk"
-    else:
-        return "High Risk"
+    return predictions, windows
 
 # Step 5: Streamlit App Code
 
-st.title("Cup and Handle Pattern Detection with Risk Assessment")
+st.title("Cup and Handle Pattern Detection")
 ticker = st.text_input("Enter the stock ticker symbol (e.g., AAPL, NVDA):", "AAPL")
 
 start_date = '2010-01-01'
@@ -195,17 +152,21 @@ window_size = 60
 
 # Fetch data
 data = fetch_stock_data(ticker, start_date, end_date)
-st.write(f"🏗️  Fetching stock data for {ticker}... Hold on tight, we’re diving into {len(data)} rows of financial history for {ticker}!")
+st.write(f"ðŸ—ï¸  Fetching stock data for {ticker}... Hold on tight, weâ€™re diving into {len(data)} rows of financial history for {ticker}!")
+# st.write(f"Fetched {len(data)} rows of data for {ticker}.")
 
 # Create windows
 windows = create_windows(data, window_size)
-st.write(f"🔍 Scanning the data... We just crafted {len(windows)} windows of opportunity, each with a size of {window_size} days. Time to dig deep!")
+st.write(f"ðŸ” Scanning the data... We just crafted {len(windows)} windows of opportunity, each with a size of {window_size} days. Time to dig deep!")
+# st.write(f"Created {len(windows)} windows of size {window_size}.")
+
 
 # Label windows
 labels = label_windows(windows)
 positive_samples = labels.sum()
 negative_samples = len(labels) - positive_samples
-st.write(f"💡 Pattern detection at work... We’ve uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
+st.write(f"ðŸ’¡ Pattern detection at work... Weâ€™ve uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
+# st.write(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
 
 # Preprocess windows
 X = preprocess_windows(windows)
@@ -228,7 +189,7 @@ new_start_date = one_year_ago.strftime('%Y-%m-%d')
 new_end_date = today.strftime('%Y-%m-%d')
 
 new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
-predictions, new_windows, predictions_prob = predict_on_new_data(model, new_data, window_size)
+predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
 # Get indices where cup and handle patterns are detected
 pattern_indices = np.where(predictions == 1)[0]
@@ -245,24 +206,26 @@ if len(pattern_indices) > 0:
     
     price_min = window['Low'].min()
     price_max = window['High'].max()
-
-    st.write(f"🎯 Jackpot! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}.")
-    st.write(f"📈 Price range: {price_min:.2f} to {price_max:.2f}.")
-
-    # Risk assessment using real calculated data
-    market_data = fetch_stock_data('^GSPC', new_start_date, new_end_date)  # S&P 500 as an example
-    market_data['200_MA'] = market_data['Close'].rolling(window=200).mean()
     
-    past_patterns = pd.DataFrame({"success_rate": [0.8, 0.6, 0.9]})  # You would calculate this from past backtests
-    volume_data = window['Volume']
-    
-    risk_level = assess_risk(predictions_prob[last_idx], window, past_patterns, market_data, volume_data)
-    st.write(f"⚖️ Risk Assessment: {risk_level}")
+    # st.write(f"Last detected cup and handle pattern from {start_date_formatted} to {end_date_formatted}")
+    # st.write(f"Price range: {price_min:.2f} to {price_max:.2f}")
+    st.write(f"ðŸŽ¯ Jackpot! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}.")
+    st.write(f"ðŸ“ˆ Ready for the numbers? Price danced from {price_min:.2f} to {price_max:.2f}.")
 
-    # Candlestick plot
+
+
+
+
+    
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
+
+    # Create a matplotlib figure to pass to mplfinance
     fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Use mplfinance to plot on the figure's axis
     mpf.plot(candlestick_data, type='candle', style='yahoo', ax=ax)
+
+    # Display the plot using Streamlit's pyplot
     st.pyplot(fig)
 
 else:
