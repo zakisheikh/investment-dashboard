@@ -139,11 +139,49 @@ def predict_on_new_data(model, data, window_size):
 
     predictions_prob = model.predict(X_new, verbose=0)
     predictions = (predictions_prob > 0.5).astype("int32")
-    return predictions, windows
+    return predictions, windows, predictions_prob
+
+# Step 8: Risk Assessment
+
+def assess_risk(predictions_prob, window, success_rate, market_trend, volume_data):
+    """
+    Assess the risk for each detected pattern based on various factors:
+    1. Model confidence (prediction probability)
+    2. Historical success rate of the pattern
+    3. Market condition (bull or bear)
+    4. Volume confirmation
+    """
+
+    # Confidence risk
+    confidence_risk = 0 if predictions_prob > 0.8 else 1 if predictions_prob > 0.6 else 2
+
+    # Volatility risk (using ATR or a custom method)
+    vol_range = window['High'].max() - window['Low'].min()
+    volatility_risk = 1 if vol_range > 5 else 0
+
+    # Historical success rate risk
+    success_risk = 0 if success_rate > 0.75 else 1 if success_rate > 0.5 else 2
+
+    # Market trend risk
+    market_risk = 0 if market_trend == 'Bull' else 2
+
+    # Volume risk
+    avg_volume = np.mean(volume_data)
+    volume_risk = 0 if avg_volume > np.median(volume_data) else 1
+
+    # Calculate overall risk score
+    risk_score = confidence_risk + volatility_risk + success_risk + market_risk + volume_risk
+
+    if risk_score <= 2:
+        return "Low Risk"
+    elif 3 <= risk_score <= 5:
+        return "Medium Risk"
+    else:
+        return "High Risk"
 
 # Step 5: Streamlit App Code
 
-st.title("Cup and Handle Pattern Detection")
+st.title("Cup and Handle Pattern Detection with Risk Assessment")
 ticker = st.text_input("Enter the stock ticker symbol (e.g., AAPL, NVDA):", "AAPL")
 
 start_date = '2010-01-01'
@@ -153,20 +191,16 @@ window_size = 60
 # Fetch data
 data = fetch_stock_data(ticker, start_date, end_date)
 st.write(f"🏗️  Fetching stock data for {ticker}... Hold on tight, we’re diving into {len(data)} rows of financial history for {ticker}!")
-# st.write(f"Fetched {len(data)} rows of data for {ticker}.")
 
 # Create windows
 windows = create_windows(data, window_size)
 st.write(f"🔍 Scanning the data... We just crafted {len(windows)} windows of opportunity, each with a size of {window_size} days. Time to dig deep!")
-# st.write(f"Created {len(windows)} windows of size {window_size}.")
-
 
 # Label windows
 labels = label_windows(windows)
 positive_samples = labels.sum()
 negative_samples = len(labels) - positive_samples
 st.write(f"💡 Pattern detection at work... We’ve uncovered {positive_samples} potential cup and handle formations out of {len(labels)} windows. The hunt is on!")
-# st.write(f"Labeled windows. Positive samples: {positive_samples}, Negative samples: {negative_samples}")
 
 # Preprocess windows
 X = preprocess_windows(windows)
@@ -189,7 +223,7 @@ new_start_date = one_year_ago.strftime('%Y-%m-%d')
 new_end_date = today.strftime('%Y-%m-%d')
 
 new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
-predictions, new_windows = predict_on_new_data(model, new_data, window_size)
+predictions, new_windows, predictions_prob = predict_on_new_data(model, new_data, window_size)
 
 # Get indices where cup and handle patterns are detected
 pattern_indices = np.where(predictions == 1)[0]
@@ -206,27 +240,5 @@ if len(pattern_indices) > 0:
     
     price_min = window['Low'].min()
     price_max = window['High'].max()
-    
-    # st.write(f"Last detected cup and handle pattern from {start_date_formatted} to {end_date_formatted}")
-    # st.write(f"Price range: {price_min:.2f} to {price_max:.2f}")
-    st.write(f"🎯 Jackpot! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}.")
-    st.write(f"📈 Ready for the numbers? Price danced from {price_min:.2f} to {price_max:.2f}.")
 
-
-
-
-
-    
-    candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
-
-    # Create a matplotlib figure to pass to mplfinance
-    fig, ax = plt.subplots(figsize=(10, 6))
-
-    # Use mplfinance to plot on the figure's axis
-    mpf.plot(candlestick_data, type='candle', style='yahoo', ax=ax)
-
-    # Display the plot using Streamlit's pyplot
-    st.pyplot(fig)
-
-else:
-    st.write("No cup and handle pattern detected in the new data.")
+   
