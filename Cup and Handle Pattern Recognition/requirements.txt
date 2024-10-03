@@ -1,9 +1,0 @@
-streamlit
-yfinance
-pandas
-numpy
-matplotlib
-ta
-TensorFlow
-scikit-learn
-mplfinance
