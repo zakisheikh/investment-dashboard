@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from datetime import datetime, timedelta
 
-# Step 1: Download Historical Data for both intraday and daily timeframes
+# Step 1: Download Historical Data for both intraday and daily/weekly timeframes
 @st.cache_data
 def download_data(ticker, interval='5m'):
     """
-    Download both intraday and daily historical market data for a given ticker.
-    Handle the limitations of Yahoo Finance's API for different intraday intervals.
+    Download both intraday and daily/weekly historical market data for a given ticker.
+    Handle the limitations of Yahoo Finance's API for different intervals.
     """
     try:
         # Define the end date as today
@@ -30,11 +30,17 @@ def download_data(ticker, interval='5m'):
         elif interval in ['60m', '1h']:
             # 60-minute and 1-hour intervals allow up to 730 days (2 years)
             start_date = end_date - timedelta(days=730)
+        elif interval == '1d':
+            # Daily interval allows up to 10 years
+            start_date = end_date - timedelta(days=3650)
+        elif interval == '1wk':
+            # Weekly interval allows up to 10 years
+            start_date = end_date - timedelta(weeks=520)
         else:
             st.error(f"Interval '{interval}' is not supported. Please choose a valid interval.")
             return None, None
 
-        # Fetch intraday data using start and end dates
+        # Fetch intraday/daily/weekly data using start and end dates
         intraday_data = yf.Ticker(ticker).history(start=start_date, end=end_date, interval=interval)
         
         # Fetch daily data (1 year)
@@ -43,7 +49,7 @@ def download_data(ticker, interval='5m'):
 
         # Validate data
         if intraday_data.empty:
-            st.error(f"No intraday data found for {ticker} with interval '{interval}'.")
+            st.error(f"No data found for {ticker} with interval '{interval}'.")
             return None, None
 
         if daily_data.empty:
@@ -102,9 +108,9 @@ def get_user_parameters():
     return profit_target / 100, risk_reward_ratio
 
 # Step 4: Backtest the Strategy
-def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio):
+def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio, interval):
     """
-    Perform a backtest of the strategy using both intraday and daily data.
+    Perform a backtest of the strategy using both intraday and daily/weekly data.
     Implements proper stop loss based on buy price and RRR.
     Implements a trailing stop loss.
     Generates a chart showing buy/sell signals with arrows.
@@ -130,12 +136,12 @@ def backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_rati
     if 'RSI' not in daily_data.columns:
         daily_data = calculate_indicators(daily_data)
 
-    # Use daily data to guide the overall trend and intraday data for trades
+    # Use daily/weekly data to guide the overall trend and intraday data for trades
     for i in range(1, len(intraday_data)):
         current_time = intraday_data.index[i]
         current_price = intraday_data['Close'].iloc[i]
         current_rsi_intraday = intraday_data['RSI'].iloc[i]
-        current_rsi_daily = daily_data['RSI'].iloc[-1]  # Latest daily RSI
+        current_rsi_daily = daily_data['RSI'].iloc[-1]  # Latest daily/weekly RSI
 
         sma_short = intraday_data['SMA50'].iloc[i]  # Short-term moving average (50 periods)
         sma_long = intraday_data['SMA200'].iloc[i]  # Long-term moving average (200 periods)
@@ -269,7 +275,7 @@ def plot_signals(data, buy_signals, sell_signals):
 # Step 5: Suggest Next Trade
 def suggest_next_trade(intraday_data, daily_data):
     """
-    Suggest the next trade (buy/sell) based on the latest indicators from both intraday and daily timeframes.
+    Suggest the next trade (buy/sell) based on the latest indicators from both intraday and daily/weekly timeframes.
     """
     if intraday_data is None or daily_data is None or len(intraday_data) == 0 or len(daily_data) == 0:
         return "No data available to suggest a trade."
@@ -299,7 +305,7 @@ def main():
 
     # User Inputs
     ticker = st.sidebar.text_input("Enter the ticker symbol for the stock (e.g., SPY, QQQ, AAPL, XLK):", value="XLK").upper()
-    interval = st.sidebar.selectbox("Select the interval for intraday data:", ["1m", "2m", "5m", "15m", "30m", "60m"])
+    interval = st.sidebar.selectbox("Select the interval for intraday data:", ["1m", "2m", "5m", "15m", "30m", "60m", "1d", "1wk"])
 
     st.sidebar.markdown("---")
 
@@ -323,7 +329,7 @@ def main():
                 daily_data = calculate_indicators(daily_data)
 
                 # Run backtest
-                final_balance, trade_log = backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio)
+                final_balance, trade_log = backtest_strategy(intraday_data, daily_data, profit_target, risk_reward_ratio, interval)
 
                 # Suggest the next trade based on current indicators
                 next_trade = suggest_next_trade(intraday_data, daily_data)
