@@ -188,7 +188,6 @@ new_data = fetch_stock_data(ticker, new_start_date, new_end_date)
 predictions, new_windows = predict_on_new_data(model, new_data, window_size)
 
 # Display last detected pattern
-pattern_indices = np.where(predictions == 1)[0]
 if len(pattern_indices) > 0:
     last_idx = pattern_indices[-1]
     window = new_windows[last_idx]
@@ -206,8 +205,13 @@ if len(pattern_indices) > 0:
     
     candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
 
-    # Plot the candlestick chart
-    st.write("Last detected cup and handle pattern:")
-    mpf.plot(candlestick_data, type='candle', style='yahoo', title="Last Detected Cup and Handle Pattern", figsize=(10, 6))
+    # Create the figure and axis
+    fig, ax = plt.subplots(figsize=(10, 6))
+
+    # Use mplfinance to plot on the existing axis
+    mpf.plot(candlestick_data, type='candle', style='yahoo', ax=ax, title="Last Detected Cup and Handle Pattern")
+
+    # Display the figure in Streamlit
+    st.pyplot(fig)
 else:
     st.write("No cup and handle pattern detected in the new data.")
