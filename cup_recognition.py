@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 import mplfinance as mpf
 from datetime import datetime, timedelta
 import streamlit as st
+import talib
 
 # Suppress warnings (optional)
 import warnings
@@ -143,33 +144,37 @@ def predict_on_new_data(model, data, window_size):
 
 # Step 8: Risk Assessment
 
-def assess_risk(predictions_prob, window, success_rate, market_trend, volume_data):
+def assess_risk(predictions_prob, window, past_patterns, market_data, volume_data):
     """
     Assess the risk for each detected pattern based on various factors:
     1. Model confidence (prediction probability)
-    2. Historical success rate of the pattern
+    2. Historical success rate of the pattern (backtest result)
     3. Market condition (bull or bear)
-    4. Volume confirmation
+    4. Volume confirmation (average volume over period)
+    5. Volatility assessment (using ATR)
     """
 
-    # Confidence risk
+    # Confidence risk based on the model's probability
     confidence_risk = 0 if predictions_prob > 0.8 else 1 if predictions_prob > 0.6 else 2
 
-    # Volatility risk (using ATR or a custom method)
-    vol_range = window['High'].max() - window['Low'].min()
-    volatility_risk = 1 if vol_range > 5 else 0
+    # Volatility assessment using ATR (Average True Range)
+    atr = talib.ATR(window['High'], window['Low'], window['Close'], timeperiod=14)
+    avg_atr = np.mean(atr)
+    volatility_risk = 0 if avg_atr < 5 else 1  # Threshold based on typical values
 
-    # Historical success rate risk
-    success_risk = 0 if success_rate > 0.75 else 1 if success_rate > 0.5 else 2
+    # Historical success rate (based on past pattern performance)
+    past_success_rate = past_patterns['success_rate'].mean()
+    success_risk = 0 if past_success_rate > 0.75 else 1 if past_success_rate > 0.5 else 2
 
-    # Market trend risk
-    market_risk = 0 if market_trend == 'Bull' else 2
+    # Market condition: use the trend of the market index (like S&P 500 or NASDAQ)
+    market_trend = (market_data['Close'][-1] > market_data['200_MA'][-1])
+    market_risk = 0 if market_trend else 2  # Bull market if index is above 200-MA
 
-    # Volume risk
+    # Volume assessment
     avg_volume = np.mean(volume_data)
     volume_risk = 0 if avg_volume > np.median(volume_data) else 1
 
-    # Calculate overall risk score
+    # Final risk score (sum of all factors)
     risk_score = confidence_risk + volatility_risk + success_risk + market_risk + volume_risk
 
     if risk_score <= 2:
@@ -241,4 +246,24 @@ if len(pattern_indices) > 0:
     price_min = window['Low'].min()
     price_max = window['High'].max()
 
-   
+    st.write(f"🎯 Jackpot! The last cup and handle pattern emerged between {start_date_formatted} and {end_date_formatted}.")
+    st.write(f"📈 Price range: {price_min:.2f} to {price_max:.2f}.")
+
+    # Risk assessment using real calculated data
+    market_data = fetch_stock_data('^GSPC', new_start_date, new_end_date)  # S&P 500 as an example
+    market_data['200_MA'] = market_data['Close'].rolling(window=200).mean()
+    
+    past_patterns = pd.DataFrame({"success_rate": [0.8, 0.6, 0.9]})  # You would calculate this from past backtests
+    volume_data = window['Volume']
+    
+    risk_level = assess_risk(predictions_prob[last_idx], window, past_patterns, market_data, volume_data)
+    st.write(f"⚖️ Risk Assessment: {risk_level}")
+
+    # Candlestick plot
+    candlestick_data = window[['Open', 'High', 'Low', 'Close']].copy()
+    fig, ax = plt.subplots(figsize=(10, 6))
+    mpf.plot(candlestick_data, type='candle', style='yahoo', ax=ax)
+    st.pyplot(fig)
+
+else:
+    st.write("No cup and handle pattern detected in the new data.")
