@@ -293,7 +293,7 @@ def suggest_next_trade(intraday_data, daily_data):
 
 # Main Streamlit App
 def main():
-    st.title("📈 Day Trading Analysis and Prediction")
+    st.title("📈 Day Trading Simulator and Prediction")
 
     st.sidebar.header("User Inputs")
 
