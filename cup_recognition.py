@@ -148,7 +148,7 @@ ticker = st.text_input("Enter the stock ticker symbol (e.g., AAPL, NVDA):", "AAP
 
 start_date = '2010-01-01'
 end_date = '2023-12-31'
-window_size = 80
+window_size = 60
 
 # Fetch data
 data = fetch_stock_data(ticker, start_date, end_date)
